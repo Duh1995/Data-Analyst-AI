@@ -31,7 +31,7 @@ Users can upload CSV or Excel files and instantly receive:
 
 ## Dataset Upload & Profiling
 
-[Application Overview](Images/Image1.png)
+![Application Overview](Images/Imagem1.png)
 
 The application loads CSV and Excel files and automatically generates a complete dataset profile.
 
@@ -39,7 +39,7 @@ The application loads CSV and Excel files and automatically generates a complete
 
 ## Dataset Structure Analysis
 
-[Cardinality Analysis](Images/Image2.png)
+![Cardinality Analysis](Images/Imagem2.png)
 
 The profiler identifies:
 
@@ -54,7 +54,7 @@ The profiler identifies:
 
 ## Category Analysis
 
-[Top Categories](Images/Image3.png)
+![Top Categories](Images/Imagem3.png)
 
 Automatic category distribution analysis helps users quickly understand the composition of the dataset.
 
@@ -62,7 +62,7 @@ Automatic category distribution analysis helps users quickly understand the comp
 
 ## Data Preview
 
-[Dataset Preview](Images/Image4.png)
+![Dataset Preview](Images/Imagem4.png)
 
 The application displays the dataset structure and provides an initial overview of the data.
 
@@ -70,7 +70,7 @@ The application displays the dataset structure and provides an initial overview 
 
 ## Data Types & Statistics
 
-[Statistics](Images/Image5.png)
+![Statistics](Images/Imagem5.png)
 
 Automatic generation of:
 
@@ -82,7 +82,7 @@ Automatic generation of:
 
 ## Intelligent Visualization
 
-[Visualization](Images/Image6.png)
+![Visualization](Images/Imagem6.png)
 
 The application recommends visualizations based on the dataset structure and allows dynamic selection of categories and metrics.
 
