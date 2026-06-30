@@ -31,6 +31,8 @@ if uploaded_file is not None:
     st.subheader("Resumo dos Dados")
 
     profile = build_profile(df)
+    meaningful_numeric = profile["meaningful_numeric_columns"]
+    meaningful_categorical = profile["meaningful_categorical_columns"]
     st.subheader("Perfil do Dataset")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -66,8 +68,8 @@ if uploaded_file is not None:
 
     st.write(f"Memória Utilizada: {profile['profile_memory']} MB")
     st.write(f"Coluna de Data: {profile['date_column']}")
-    st.write(f"Colunas Numéricas: {len(profile['numeric_columns'])}")
-    st.write(f"Colunas Categóricas: {len(profile['categorical_columns'])}")
+    st.write(f"Colunas Numéricas: {len(meaningful_numeric)}")
+    st.write(f"Colunas Categóricas: {len(meaningful_categorical)}")
     st.write("Cardinalidade das Colunas")
 
     st.dataframe(
@@ -89,17 +91,17 @@ if uploaded_file is not None:
         st.dataframe(category_df)
 
     st.write("Colunas Numéricas:")
-    st.write(", ".join(profile["numeric_columns"]))
+    st.write(", ".join(meaningful_numeric))
     st.write("Colunas Categóricas:")
-    st.write(", ".join(profile["categorical_columns"]))
+    st.write(", ".join(meaningful_categorical))
 
     st.subheader("Debug Semântico")
     st.write("Colunas Identificadoras:")
     st.write(", ".join(profile["identifier_columns"]))
     st.write("Colunas Numéricas Relevantes:")
-    st.write(", ".join(profile["meaningful_numeric_columns"]))
+    st.write(", ".join(meaningful_numeric))
     st.write("Colunas Categóricas Relevantes:")
-    st.write(", ".join(profile["meaningful_categorical_columns"]))
+    st.write(", ".join(meaningful_categorical))
 
 
     # Primeiras linhas
@@ -161,53 +163,77 @@ if uploaded_file is not None:
 
     if profile["recommended_chart"] == "line":
 
-        selected_column = st.selectbox(
-            "Escolhe a métrica",
-            profile["meaningful_numeric_columns"]
-        )
+        if meaningful_numeric:
 
-        fig = create_line_chart(
-            df,
-            x_col=profile["date_column"],
-            y_col=selected_column
-        )
+            selected_column = st.selectbox(
+                "Escolhe a métrica",
+                meaningful_numeric
+            )
 
-        st.plotly_chart(fig)
+            fig = create_line_chart(
+                df,
+                x_col=profile["date_column"],
+                y_col=selected_column
+            )
+
+            st.plotly_chart(fig)
+
+        else:
+
+            st.warning(
+                "Não foi possível recomendar um gráfico."
+            )
 
     elif profile["recommended_chart"] == "bar":
 
-        category_column = st.selectbox(
-            "Escolhe a categoria",
-            profile["meaningful_categorical_columns"]
-        )
+        if meaningful_categorical and meaningful_numeric:
 
-        numeric_column = st.selectbox(
-            "Escolhe a métrica",
-            profile["meaningful_numeric_columns"]
-        )
-        bar_df = (
-            df.groupby(category_column)[numeric_column]
-            .mean()
-            .reset_index()
-        )
-        fig = create_bar_chart(
-            bar_df,
-            x_col=category_column,
-            y_col=numeric_column
-        )
+            category_column = st.selectbox(
+                "Escolhe a categoria",
+                meaningful_categorical
+            )
 
-        st.plotly_chart(fig)
+            numeric_column = st.selectbox(
+                "Escolhe a métrica",
+                meaningful_numeric
+            )
+            bar_df = (
+                df.groupby(category_column)[numeric_column]
+                .mean()
+                .reset_index()
+            )
+            fig = create_bar_chart(
+                bar_df,
+                x_col=category_column,
+                y_col=numeric_column
+            )
+
+            st.plotly_chart(fig)
+
+        else:
+
+            st.warning(
+                "Não foi possível recomendar um gráfico."
+            )
 
     elif profile["recommended_chart"] == "histogram":
 
-        numeric_column = profile["meaningful_numeric_columns"][0]
+        if meaningful_numeric:
 
-        fig = create_histogram(
-            df,
-            column=numeric_column
-        )
+            numeric_column = meaningful_numeric[0]
 
-        st.plotly_chart(fig)
+            fig = create_histogram(
+                df,
+                column=numeric_column
+            )
+
+            st.plotly_chart(fig)
+
+        else:
+
+            st.warning(
+                "Não foi possível recomendar um gráfico."
+            )
 
     else:
 
