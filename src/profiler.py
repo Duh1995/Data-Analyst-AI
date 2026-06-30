@@ -1,6 +1,7 @@
 import profile
 
 import pandas as pd
+from src.column_semantics import classify_columns
 
 def get_numeric_columns(df):
 
@@ -110,16 +111,19 @@ def get_top_categories(df):
 
 def get_chart_recommendation(profile):
 
-    if profile["date_column"] is not None:
+    if (
+        profile["date_column"] is not None
+        and len(profile["meaningful_numeric_columns"]) > 0
+    ):
         return "line"
 
     if (
-        len(profile["categorical_columns"]) > 0
-        and len(profile["numeric_columns"]) > 0
+        len(profile["meaningful_categorical_columns"]) > 0
+        and len(profile["meaningful_numeric_columns"]) > 0
     ):
         return "bar"
 
-    if len(profile["numeric_columns"]) > 0:
+    if len(profile["meaningful_numeric_columns"]) > 0:
         return "histogram"
 
     return None
@@ -158,20 +162,29 @@ def generate_insights(profile):
     return insights
 
 def build_profile(df):
+    date_column = get_date_column(df)
+    column_semantics = classify_columns(
+        df,
+        date_column=date_column
+    )
     
     profile = {
         "rows": df.shape[0],
         "columns": df.shape[1],
-        "date_column": get_date_column(df),
+        "date_column": date_column,
         "numeric_columns": get_numeric_columns(df),
         "categorical_columns": get_categorical_columns(df),
+        "identifier_columns": column_semantics["identifier_columns"],
+        "meaningful_numeric_columns": column_semantics["meaningful_numeric_columns"],
+        "meaningful_categorical_columns": column_semantics["meaningful_categorical_columns"],
         "null_count": get_null_count(df),
         "null_percentage": get_null_percentage(df),
         "duplicate_count": get_duplicate_count(df),
         "profile_memory": get_memory_usage(df),
         "possible_keys": get_possible_keys(df),
         "cardinality": get_cardinality(df),
-        "top_categories": get_top_categories(df)
+        "top_categories": get_top_categories(df),
+        "total_nulls": df.isnull().sum().sum()
     }
     profile["recommended_chart"] = get_chart_recommendation(profile)
     profile["insights"] = generate_insights(profile)
