@@ -167,6 +167,18 @@ def build_profile(df):
         df,
         date_column=date_column
     )
+    identifier_columns = column_semantics.get(
+        "identifier_columns",
+        []
+    )
+    meaningful_numeric_columns = column_semantics.get(
+        "meaningful_numeric_columns",
+        []
+    )
+    meaningful_categorical_columns = column_semantics.get(
+        "meaningful_categorical_columns",
+        []
+    )
     
     profile = {
         "rows": df.shape[0],
@@ -174,9 +186,9 @@ def build_profile(df):
         "date_column": date_column,
         "numeric_columns": get_numeric_columns(df),
         "categorical_columns": get_categorical_columns(df),
-        "identifier_columns": column_semantics["identifier_columns"],
-        "meaningful_numeric_columns": column_semantics["meaningful_numeric_columns"],
-        "meaningful_categorical_columns": column_semantics["meaningful_categorical_columns"],
+        "identifier_columns": identifier_columns,
+        "meaningful_numeric_columns": meaningful_numeric_columns,
+        "meaningful_categorical_columns": meaningful_categorical_columns,
         "null_count": get_null_count(df),
         "null_percentage": get_null_percentage(df),
         "duplicate_count": get_duplicate_count(df),
