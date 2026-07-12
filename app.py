@@ -11,7 +11,67 @@ from src.charts import (
 )
 from src.profiler import build_profile
 from src.qa import answer_question
-from src.data_loader import load_data
+from src.data_loader import DataLoadingError, load_data
+
+
+def render_business_metrics_summary(business_metrics):
+    summary_rows = []
+
+    for area, metrics in business_metrics.items():
+        if "metrics_by_column" in metrics:
+            for column, values in metrics["metrics_by_column"].items():
+                summary_rows.append({
+                    "Area": area,
+                    "Column": column,
+                    "Total": values.get("total"),
+                    "Average": values.get("average"),
+                    "Count": values.get("count")
+                })
+
+        elif "unique_counts" in metrics:
+            for column, unique_count in metrics["unique_counts"].items():
+                summary_rows.append({
+                    "Area": area,
+                    "Column": column,
+                    "Unique Count": unique_count
+                })
+
+        else:
+            summary_rows.append({
+                "Area": area,
+                "Null Count": metrics.get("null_count"),
+                "Null Percentage": metrics.get("null_percentage"),
+                "Duplicate Count": metrics.get("duplicate_count")
+            })
+
+    if summary_rows:
+        st.dataframe(pd.DataFrame(summary_rows))
+    else:
+        st.write("No business metrics available.")
+
+
+def render_business_health_summary(business_health):
+    health_rows = []
+
+    for area, health in business_health.items():
+        health_rows.append({
+            "Area": area,
+            "Status": health.get("status"),
+            "Reason": health.get("reason")
+        })
+
+    if health_rows:
+        st.dataframe(pd.DataFrame(health_rows))
+    else:
+        st.write("No business health assessment available.")
+
+
+def render_executive_priorities(executive_priorities):
+    if not executive_priorities:
+        st.write("No executive priorities available.")
+        return
+
+    st.dataframe(pd.DataFrame(executive_priorities))
 
 st.title("Data Analyst AI")
 
@@ -22,7 +82,12 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    df = load_data(uploaded_file)
+    try:
+        df = load_data(uploaded_file)
+
+    except DataLoadingError as error:
+        st.error(str(error))
+        st.stop()
 
     st.success("Ficheiro carregado com sucesso!")
     
@@ -145,6 +210,35 @@ if uploaded_file is not None:
         file_name="data_analyst_ai_report.txt",
         mime="text/plain"
     )
+
+    st.subheader("Executive Dashboard")
+
+    with st.expander("Business Diagnosis", expanded=True):
+        business_diagnosis = profile.get("business_diagnosis", {})
+
+        st.write("Dataset Type:", business_diagnosis.get("dataset_type"))
+        st.write("Analysis Readiness:", business_diagnosis.get("analysis_readiness"))
+        st.write("Business Areas:")
+        st.write(", ".join(business_diagnosis.get("business_areas", [])))
+        st.write("Business Metrics:")
+        st.write(", ".join(business_diagnosis.get("business_metrics", [])))
+        st.write("Business Dimensions:")
+        st.write(", ".join(business_diagnosis.get("business_dimensions", [])))
+
+        warnings = business_diagnosis.get("warnings", [])
+
+        if warnings:
+            st.write("Warnings:")
+            st.dataframe(pd.DataFrame(warnings))
+
+    with st.expander("Business Metrics"):
+        render_business_metrics_summary(profile.get("business_metrics", {}))
+
+    with st.expander("Business Health"):
+        render_business_health_summary(profile.get("business_health", {}))
+
+    with st.expander("Executive Priorities"):
+        render_executive_priorities(profile.get("executive_priorities", []))
 
     # Gráfico Automático
 

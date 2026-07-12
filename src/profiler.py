@@ -1,7 +1,15 @@
 import profile
 
 import pandas as pd
+from src.analysis_catalog import get_analysis_catalog
+from src.analysis_resolver import build_analysis_resolution
+from src.business_metrics import build_business_metrics
 from src.column_semantics import classify_columns
+from src.decision_engine import (
+    build_business_diagnosis,
+    build_business_health,
+    build_executive_priorities
+)
 
 def get_numeric_columns(df):
 
@@ -198,6 +206,18 @@ def build_profile(df):
         "top_categories": get_top_categories(df),
         "total_nulls": df.isnull().sum().sum()
     }
+    profile["business_diagnosis"] = build_business_diagnosis(profile)
+    profile["business_metrics"] = build_business_metrics(profile, df)
+    profile["business_health"] = build_business_health(profile)
+    profile["available_analyses"] = build_analysis_resolution(
+        profile,
+        get_analysis_catalog()
+    )
+    profile["executive_priorities"] = build_executive_priorities(
+        profile["available_analyses"],
+        profile["business_health"],
+        profile["business_diagnosis"]
+    )
     profile["recommended_chart"] = get_chart_recommendation(profile)
     profile["insights"] = generate_insights(profile)
 
