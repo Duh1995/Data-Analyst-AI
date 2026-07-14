@@ -4,7 +4,7 @@ import pandas as pd
 from src.analysis_catalog import get_analysis_catalog
 from src.analysis_resolver import build_analysis_resolution
 from src.business_metrics import build_business_metrics
-from src.column_semantics import classify_columns
+from src.column_semantics import classify_columns, has_date_name
 from src.decision_engine import (
     build_business_diagnosis,
     build_business_health,
@@ -20,17 +20,9 @@ def get_numeric_columns(df):
 
 def get_date_column(df):
 
-    possible_date_columns = [
-        "date",
-        "data",
-        "order_date",
-        "transaction_date",
-        "timestamp"
-    ]
-
     for col in df.columns:
 
-        if col.lower() in possible_date_columns:
+        if has_date_name(col):
             return col
 
     for col in df.columns:

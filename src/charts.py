@@ -23,6 +23,19 @@ def create_bar_chart(df, x_col, y_col):
 
     return fig
 
+
+def create_scatter_chart(df, x_col, y_col):
+
+    fig = px.scatter(
+        df,
+        x=x_col,
+        y=y_col,
+        title=f"{y_col} por {x_col}"
+    )
+
+    return fig
+
+
 def create_histogram(df, column):
 
     fig = px.histogram(

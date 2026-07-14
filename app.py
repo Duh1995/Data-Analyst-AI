@@ -9,6 +9,7 @@ from src.analysis import (
 from src.charts import (
     create_line_chart,
     create_bar_chart,
+    create_scatter_chart,
     create_histogram
 )
 from src.analysis_catalog import get_analysis_catalog
@@ -43,14 +44,14 @@ def render_badges(values, empty_text="None identified."):
 def render_card(title, body, accent="#2563eb"):
     st.markdown(
         (
-            "<div style='border:1px solid #e5e7eb;"
+            "<div style='border:1px solid rgba(148,163,184,0.24);"
             f"border-left:5px solid {accent};"
             "border-radius:8px;"
-            "padding:1rem;"
-            "margin-bottom:0.75rem;"
-            "background:#ffffff;'>"
+            "padding:0.75rem 0.85rem;"
+            "margin-bottom:0.55rem;"
+            "background:rgba(15,23,42,0.38);'>"
             f"<div style='font-weight:700;margin-bottom:0.35rem;'>{html.escape(str(title))}</div>"
-            f"<div style='color:#374151;font-size:0.95rem;'>{body}</div>"
+            f"<div style='color:rgba(226,232,240,0.86);font-size:0.92rem;'>{body}</div>"
             "</div>"
         ),
         unsafe_allow_html=True
@@ -136,11 +137,28 @@ def get_first_matched_column(resolved_analysis, concept_type):
     return None
 
 
+def get_matched_column(resolved_analysis, concept_type, concept):
+    matched_concepts = resolved_analysis.get("matched_concepts", {})
+    matches = matched_concepts.get(concept_type, {}).get(concept, [])
+
+    if matches:
+        return matches[0]
+
+    return None
+
+
 def get_column_index(columns, preferred_column):
     if preferred_column in columns:
         return columns.index(preferred_column)
 
     return 0
+
+
+def summarize_one_line(text):
+    if not text:
+        return "No summary available."
+
+    return str(text).split(". ")[0].strip().rstrip(".") + "."
 
 
 def get_health_display(area, health):
@@ -175,13 +193,43 @@ def render_business_health_cards(business_health):
                 render_card(
                     title,
                     (
-                        f"<div style='font-size:1.05rem;font-weight:700;"
-                        f"color:{accent};margin-bottom:0.35rem;'>"
-                        f"{html.escape(status)}</div>"
-                        f"{html.escape(reason)}"
+                        "<div style='display:grid;gap:0.3rem;'>"
+                        "<div>"
+                        "<span style='font-size:0.72rem;text-transform:uppercase;"
+                        "letter-spacing:0;color:rgba(226,232,240,0.62);'>Status</span><br>"
+                        f"<span style='font-size:1rem;font-weight:700;color:{accent};'>"
+                        f"{html.escape(status)}</span>"
+                        "</div>"
+                        "<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"
+                        f"{html.escape(summarize_one_line(reason))}</div>"
+                        "</div>"
                     ),
                     accent=accent
                 )
+
+
+def render_executive_priority_card(priority, analyses_by_id):
+    analysis = analyses_by_id.get(priority.get("analysis_id"), {})
+    title = priority.get("title", "Recommended Analysis")
+    reason = priority.get("reason", "Helps management decide where to focus first.")
+    recommended_chart = format_chart_name(analysis.get("preferred_chart"))
+    business_value = format_business_value(priority.get("business_value"))
+
+    render_card(
+        f"#{priority.get('priority')} {title}",
+        (
+            "<div style='display:grid;gap:0.35rem;'>"
+            "<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"
+            f"{html.escape(summarize_one_line(reason))}</div>"
+            "<div style='display:flex;gap:0.75rem;flex-wrap:wrap;"
+            "color:rgba(226,232,240,0.68);font-size:0.86rem;'>"
+            f"<span>Value: {html.escape(business_value)}</span>"
+            f"<span>Chart: {html.escape(recommended_chart)}</span>"
+            "</div>"
+            "</div>"
+        ),
+        accent="#2563eb"
+    )
 
 
 def render_executive_priority_cards(executive_priorities, analysis_catalog):
@@ -190,37 +238,28 @@ def render_executive_priority_cards(executive_priorities, analysis_catalog):
         return
 
     analyses_by_id = get_analysis_by_id(analysis_catalog)
+    top_priorities = executive_priorities[:3]
+    remaining_priorities = executive_priorities[3:]
 
-    for priority in executive_priorities:
-        analysis = analyses_by_id.get(priority.get("analysis_id"), {})
-        title = priority.get("title", "Recommended Analysis")
-        business_question = analysis.get(
-            "business_question",
-            "This analysis can help clarify business performance."
-        )
-        why_it_matters = analysis.get(
-            "decision_supported",
-            priority.get("reason", "Helps management decide where to focus first.")
-        )
-        recommended_chart = format_chart_name(analysis.get("preferred_chart"))
-        business_value = format_business_value(priority.get("business_value"))
+    for priority in top_priorities:
+        render_executive_priority_card(priority, analyses_by_id)
 
-        render_card(
-            f"Priority #{priority.get('priority')} - {title}",
-            (
-                "<div style='display:grid;gap:0.55rem;'>"
-                "<div><strong>Business Question</strong><br>"
-                f"{html.escape(business_question)}</div>"
-                "<div><strong>Why it matters</strong><br>"
-                f"{html.escape(why_it_matters)}</div>"
-                "<div><strong>Recommended visualization</strong><br>"
-                f"{html.escape(recommended_chart)}</div>"
-                "<div><strong>Business Value</strong><br>"
-                f"{html.escape(business_value)}</div>"
-                "</div>"
-            ),
-            accent="#2563eb"
-        )
+    if remaining_priorities:
+        with st.expander("See more analyses"):
+            for priority in remaining_priorities:
+                render_executive_priority_card(priority, analyses_by_id)
+
+
+def get_available_analysis_options(available_analyses):
+    return [
+        analysis
+        for analysis in available_analyses
+        if analysis.get("available")
+    ]
+
+
+def format_analysis_option(analysis):
+    return analysis.get("title", "Recommended Analysis")
 
 
 def render_business_metrics_summary(business_metrics):
@@ -419,6 +458,13 @@ if uploaded_file is not None:
         for analysis in available_analyses
         if analysis.get("available")
     )
+    recommended_catalog_analysis, recommended_resolved_analysis = get_recommended_analysis(
+        executive_priorities,
+        analysis_catalog,
+        available_analyses
+    )
+    recommended_catalog_analysis = recommended_catalog_analysis or {}
+    recommended_resolved_analysis = recommended_resolved_analysis or {}
 
     st.subheader("Executive Summary")
     summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
@@ -443,8 +489,8 @@ if uploaded_file is not None:
 
     with summary_col4:
         st.metric(
-            "Priority Analyses",
-            len(executive_priorities)
+            "Recommended First Analysis",
+            recommended_catalog_analysis.get("title", "None")
         )
 
     st.write("This dataset contains information about:")
@@ -467,19 +513,34 @@ if uploaded_file is not None:
     render_executive_priority_cards(executive_priorities, analysis_catalog)
 
     st.subheader("Charts")
-    recommended_catalog_analysis, recommended_resolved_analysis = get_recommended_analysis(
-        executive_priorities,
-        analysis_catalog,
-        available_analyses
-    )
+    available_analysis_options = get_available_analysis_options(available_analyses)
+    selected_catalog_analysis = recommended_catalog_analysis
+    selected_resolved_analysis = recommended_resolved_analysis
 
-    if recommended_catalog_analysis:
-        st.info("Recommended first analysis")
+    if available_analysis_options:
+        recommended_analysis_id = recommended_catalog_analysis.get("id")
+        option_ids = [
+            analysis.get("id")
+            for analysis in available_analysis_options
+        ]
+        selected_resolved_analysis = st.selectbox(
+            "Recommended First Analysis",
+            available_analysis_options,
+            index=get_column_index(option_ids, recommended_analysis_id),
+            format_func=format_analysis_option
+        )
+        selected_catalog_analysis = get_analysis_by_id(analysis_catalog).get(
+            selected_resolved_analysis.get("id"),
+            selected_resolved_analysis
+        )
+
+    if selected_catalog_analysis:
         render_card(
-            recommended_catalog_analysis.get("title", "Recommended Analysis"),
+            selected_catalog_analysis.get("title", "Recommended Analysis"),
             (
-                "<strong>Business Question</strong><br>"
-                f"{html.escape(recommended_catalog_analysis.get('business_question', ''))}"
+                "<div style='white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"
+                f"{html.escape(selected_catalog_analysis.get('business_question', ''))}"
+                "</div>"
             ),
             accent="#0ea5e9"
         )
@@ -487,15 +548,28 @@ if uploaded_file is not None:
     chart_names = {
         "line": "Line",
         "bar": "Bar",
+        "scatter": "Scatter",
         "histogram": "Histogram"
     }
-    preferred_chart = recommended_catalog_analysis.get("preferred_chart")
+    preferred_chart = selected_catalog_analysis.get("preferred_chart")
     selected_chart_type = profile["recommended_chart"]
+    scatter_x_column = get_matched_column(
+        selected_resolved_analysis or {},
+        "metrics",
+        "discount"
+    )
+    scatter_y_column = get_matched_column(
+        selected_resolved_analysis or {},
+        "metrics",
+        "profitability"
+    )
 
     if preferred_chart == "line" and profile.get("date_column") and meaningful_numeric:
         selected_chart_type = "line"
     elif preferred_chart == "bar" and meaningful_categorical and meaningful_numeric:
         selected_chart_type = "bar"
+    elif preferred_chart == "scatter" and scatter_x_column and scatter_y_column:
+        selected_chart_type = "scatter"
     elif preferred_chart == "histogram" and meaningful_numeric:
         selected_chart_type = "histogram"
 
@@ -509,7 +583,7 @@ if uploaded_file is not None:
 
         if meaningful_numeric:
             preferred_metric = get_first_matched_column(
-                recommended_resolved_analysis or {},
+                selected_resolved_analysis or {},
                 "metrics"
             )
 
@@ -525,7 +599,7 @@ if uploaded_file is not None:
                 y_col=selected_column
             )
 
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
 
         else:
 
@@ -537,11 +611,11 @@ if uploaded_file is not None:
 
         if meaningful_categorical and meaningful_numeric:
             preferred_dimension = get_first_matched_column(
-                recommended_resolved_analysis or {},
+                selected_resolved_analysis or {},
                 "dimensions"
             )
             preferred_metric = get_first_matched_column(
-                recommended_resolved_analysis or {},
+                selected_resolved_analysis or {},
                 "metrics"
             )
 
@@ -567,7 +641,24 @@ if uploaded_file is not None:
                 y_col=numeric_column
             )
 
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+
+            st.warning(
+                "A chart cannot be recommended for this dataset yet."
+            )
+
+    elif selected_chart_type == "scatter":
+
+        if scatter_x_column and scatter_y_column:
+            fig = create_scatter_chart(
+                df,
+                x_col=scatter_x_column,
+                y_col=scatter_y_column
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
 
         else:
 
@@ -586,7 +677,7 @@ if uploaded_file is not None:
                 column=numeric_column
             )
 
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
 
         else:
 
