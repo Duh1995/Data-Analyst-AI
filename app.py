@@ -16,6 +16,7 @@ from src.analysis_catalog import get_analysis_catalog
 from src.profiler import build_profile
 from src.qa import answer_question
 from src.data_loader import DataLoadingError, load_data
+from src.domain_registry import get_domain_display_name, is_supported_domain
 
 
 def render_badges(values, empty_text="None identified."):
@@ -59,16 +60,7 @@ def render_card(title, body, accent="#2563eb"):
 
 
 def format_dataset_type(dataset_type):
-    dataset_types = {
-        "transactional_sales_dataset": "Retail / Sales Business",
-        "financial_or_sales_dataset": "Sales or Financial Business",
-        "customer_dataset": "Customer-Focused Business",
-        "product_dataset": "Product-Focused Business",
-        "general_business_dataset": "General Business Dataset",
-        "limited_business_dataset": "Limited Business Dataset"
-    }
-
-    return dataset_types.get(dataset_type, "Business Dataset")
+    return get_domain_display_name(dataset_type)
 
 
 def format_readiness(readiness):
@@ -163,7 +155,7 @@ def summarize_one_line(text):
 
 def get_health_display(area, health):
     status = health.get("status", "unknown")
-    title = str(area).replace("_", " ").title()
+    title = health.get("label", str(area).replace("_", " ").title())
     reason = health.get("reason", "No assessment available.")
 
     if status == "healthy":
@@ -448,6 +440,8 @@ if uploaded_file is not None:
         )
 
     business_diagnosis = profile.get("business_diagnosis", {})
+    dataset_type = business_diagnosis.get("dataset_type")
+    domain_is_supported = is_supported_domain(dataset_type)
     business_metrics = profile.get("business_metrics", {})
     business_health = profile.get("business_health", {})
     available_analyses = profile.get("available_analyses", [])
@@ -506,11 +500,18 @@ if uploaded_file is not None:
             for warning in warnings:
                 st.warning(warning.get("message", "Review this dataset before analysis."))
 
-    st.subheader("Business Health")
-    render_business_health_cards(business_health)
+    if not domain_is_supported:
+        st.info(
+            "Business recommendations are not yet available for this domain. "
+            "You can still review the dataset profile, summary, charts, and ask questions."
+        )
 
-    st.subheader("Executive Priorities")
-    render_executive_priority_cards(executive_priorities, analysis_catalog)
+    if domain_is_supported:
+        st.subheader("Business Health")
+        render_business_health_cards(business_health)
+
+        st.subheader("Executive Priorities")
+        render_executive_priority_cards(executive_priorities, analysis_catalog)
 
     st.subheader("Charts")
     available_analysis_options = get_available_analysis_options(available_analyses)

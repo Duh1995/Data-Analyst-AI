@@ -1,4 +1,9 @@
 from src.business_catalog import BUSINESS_AREA_KEYWORDS, METRIC_KEYWORDS
+from src.domain_registry import (
+    get_domain_detection_keywords,
+    get_health_sections,
+    is_supported_domain
+)
 
 
 def normalize_column_name(column_name):
@@ -32,14 +37,41 @@ def infer_dataset_type(profile):
 
     has_transaction_signal = any(
         keyword in searchable_text
-        for keyword in ["order", "invoice", "transaction"]
+        for keyword in get_domain_detection_keywords("transactional_sales_dataset")
     )
     has_sales_signal = any(
         keyword in searchable_text
-        for keyword in ["sales", "revenue", "profit", "amount"]
+        for keyword in get_domain_detection_keywords("financial_or_sales_dataset")
     )
-    has_customer_signal = "customer" in searchable_text or "client" in searchable_text
-    has_product_signal = "product" in searchable_text or "item" in searchable_text
+    has_customer_signal = any(
+        keyword in searchable_text
+        for keyword in get_domain_detection_keywords("customer_dataset")
+    )
+    has_product_signal = any(
+        keyword in searchable_text
+        for keyword in get_domain_detection_keywords("product_dataset")
+    )
+    has_healthcare_signal = any(
+        keyword in searchable_text
+        for keyword in get_domain_detection_keywords("healthcare_dataset")
+    )
+    has_hr_signal = any(
+        keyword in searchable_text
+        for keyword in get_domain_detection_keywords("hr_dataset")
+    )
+    has_crypto_signal = any(
+        keyword in searchable_text
+        for keyword in get_domain_detection_keywords("crypto_dataset")
+    )
+
+    if has_healthcare_signal:
+        return "healthcare_dataset"
+
+    if has_hr_signal:
+        return "hr_dataset"
+
+    if has_crypto_signal:
+        return "crypto_dataset"
 
     if has_transaction_signal and has_sales_signal:
         return "transactional_sales_dataset"
@@ -336,12 +368,32 @@ def assess_data_quality_health(profile):
 
 
 def build_business_health(profile):
-    return {
+    dataset_type = profile.get("business_diagnosis", {}).get("dataset_type")
+
+    if not is_supported_domain(dataset_type):
+        return {}
+
+    available_health = {
         "sales": assess_sales_health(profile),
         "profitability": assess_profitability_health(profile),
         "customers": assess_customer_health(profile),
         "data_quality": assess_data_quality_health(profile)
     }
+    business_health = {}
+
+    for section in get_health_sections(dataset_type):
+        key = section.get("key")
+        health = available_health.get(key)
+
+        if not health or health.get("status") == "unknown":
+            continue
+
+        business_health[key] = {
+            **health,
+            "label": section.get("label", key)
+        }
+
+    return business_health
 
 
 BUSINESS_VALUE_PRIORITY = {

@@ -1,4 +1,5 @@
 from src.business_catalog import BUSINESS_CONCEPT_KEYWORDS
+from src.domain_registry import get_supported_analysis_ids, is_supported_domain
 
 
 def normalize_column_name(column_name):
@@ -135,8 +136,20 @@ def resolve_analysis_availability(analysis_catalog, available_concepts):
 
 
 def build_available_analyses(business_diagnosis, analysis_catalog, available_concepts):
+    dataset_type = business_diagnosis.get("dataset_type")
+
+    if not is_supported_domain(dataset_type):
+        return []
+
+    supported_analysis_ids = get_supported_analysis_ids(dataset_type)
+    domain_analysis_catalog = [
+        analysis
+        for analysis in analysis_catalog
+        if analysis.get("id") in supported_analysis_ids
+    ]
+
     return resolve_analysis_availability(
-        analysis_catalog,
+        domain_analysis_catalog,
         available_concepts
     )
 
