@@ -60,7 +60,11 @@ def answer_question(
     business_knowledge = profile.get("business_knowledge", {})
 
     if not is_supported_business_knowledge(business_knowledge):
-        return "Business AI answers are not available for this domain yet."
+        return (
+            "Conversational business guidance is currently available only for "
+            "Retail & Sales datasets. InsightFlow will not fabricate advice "
+            "for unsupported domains."
+        )
 
     conversation_manager = conversation_manager or ConversationManager()
     provider = provider or SELECTED_PROVIDER()

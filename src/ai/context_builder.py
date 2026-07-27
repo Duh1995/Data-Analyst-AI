@@ -116,6 +116,29 @@ def build_metric_lines(key_metrics):
     return lines
 
 
+def build_advanced_retail_lines(advanced_retail_insights):
+    lines = []
+
+    for index, analysis in enumerate(advanced_retail_insights, start=1):
+        title = analysis.get("title", f"Advanced Retail Analysis {index}")
+        grain = analysis.get("grain", "business area")
+        metric = analysis.get("metric", "metric")
+        findings = analysis.get("findings", [])
+        metrics = analysis.get("metrics", {})
+        metric_text = "; ".join(
+            f"{label}: {value}"
+            for label, value in metrics.items()
+        )
+        line = f"{index}. {title} ({grain}, {metric}): " + " ".join(findings)
+
+        if metric_text:
+            line += f" Metrics: {metric_text}."
+
+        lines.append(line)
+
+    return lines
+
+
 def build_ai_context(business_knowledge):
     business_knowledge = business_knowledge or {}
 
@@ -133,6 +156,12 @@ def build_ai_context(business_knowledge):
             build_insight_lines(business_knowledge.get("insights", []))
         ),
         format_section(
+            "Advanced Retail Intelligence",
+            build_advanced_retail_lines(
+                business_knowledge.get("advanced_retail_insights", [])
+            )
+        ),
+        format_section(
             "Recommendations",
             build_recommendation_lines(business_knowledge.get("recommendations", []))
         ),
@@ -142,7 +171,12 @@ def build_ai_context(business_knowledge):
         ),
         format_section(
             "Key Metrics",
-            build_metric_lines(business_knowledge.get("key_metrics", {}))
+            (
+                build_metric_lines(business_knowledge.get("key_metrics", {}))
+                + build_advanced_retail_lines(
+                    business_knowledge.get("advanced_retail_insights", [])
+                )
+            )
         )
     ]
 

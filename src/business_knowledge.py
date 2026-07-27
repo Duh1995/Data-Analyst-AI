@@ -52,6 +52,8 @@ def build_business_knowledge(profile):
             "summary": build_summary(profile),
             "health": {},
             "insights": [],
+            "advanced_retail_insights": [],
+            "executive_action_plan": [],
             "recommendations": [],
             "priorities": [],
             "key_metrics": {}
@@ -61,6 +63,8 @@ def build_business_knowledge(profile):
         "summary": build_summary(profile),
         "health": profile.get("business_health", {}),
         "insights": profile.get("business_insights", []),
+        "advanced_retail_insights": profile.get("advanced_retail_insights", []),
+        "executive_action_plan": profile.get("executive_action_plan", []),
         "recommendations": build_recommendations(profile),
         "priorities": profile.get("executive_priorities", []),
         "key_metrics": profile.get("business_metrics", {})

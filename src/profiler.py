@@ -1,6 +1,7 @@
 import pandas as pd
 from src.analysis_catalog import get_analysis_catalog
 from src.analysis_resolver import build_analysis_resolution
+from src.advanced_retail_insights import build_advanced_retail_insights
 from src.business_insights import build_business_insights
 from src.business_knowledge import build_business_knowledge
 from src.business_metrics import build_business_metrics
@@ -10,6 +11,7 @@ from src.decision_engine import (
     build_business_health,
     build_executive_priorities
 )
+from src.executive_action_planner import build_executive_action_plan
 
 def get_numeric_columns(df):
 
@@ -211,8 +213,13 @@ def build_profile(df):
         profile["business_diagnosis"]
     )
     profile["business_insights"] = build_business_insights(profile, df)
+    profile["advanced_retail_insights"] = build_advanced_retail_insights(profile, df)
     profile["recommended_chart"] = get_chart_recommendation(profile)
     profile["insights"] = generate_insights(profile)
+    profile["business_knowledge"] = build_business_knowledge(profile)
+    profile["executive_action_plan"] = build_executive_action_plan(
+        profile["business_knowledge"]
+    )
     profile["business_knowledge"] = build_business_knowledge(profile)
 
     return profile
