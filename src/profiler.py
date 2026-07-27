@@ -1,8 +1,8 @@
-import profile
-
 import pandas as pd
 from src.analysis_catalog import get_analysis_catalog
 from src.analysis_resolver import build_analysis_resolution
+from src.business_insights import build_business_insights
+from src.business_knowledge import build_business_knowledge
 from src.business_metrics import build_business_metrics
 from src.column_semantics import classify_columns, has_date_name
 from src.decision_engine import (
@@ -35,7 +35,7 @@ def get_date_column(df):
 
                 return col
 
-            except:
+            except (ValueError, TypeError):
                 pass
 
     return None
@@ -133,7 +133,7 @@ def generate_insights(profile):
     insights = []
 
     insights.append(
-        f"O dataset contém {profile['rows']} registos distriuidos por {profile['columns']} colunas."
+        f"O dataset contém {profile['rows']} registos distribuídos por {profile['columns']} colunas."
     )
 
 
@@ -210,8 +210,10 @@ def build_profile(df):
         profile["business_health"],
         profile["business_diagnosis"]
     )
+    profile["business_insights"] = build_business_insights(profile, df)
     profile["recommended_chart"] = get_chart_recommendation(profile)
     profile["insights"] = generate_insights(profile)
+    profile["business_knowledge"] = build_business_knowledge(profile)
 
     return profile
 

@@ -1,4 +1,3 @@
-import pandas as pd
 import plotly.express as px
 
 def create_line_chart(df, x_col, y_col):

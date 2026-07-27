@@ -1,121 +1,77 @@
-def answer_question(question, profile, df):
-
-    question = question.lower()
-
-    row_keywords = [
-        "row",
-        "rows",
-        "record",
-        "records",
-        "entry",
-        "entries",
-        "observation",
-        "observations"
-    ]
-
-    column_keywords = [
-        "column",
-        "columns",
-        "field",
-        "fields"
-    ]
-
-    null_keywords = [
-        "null",
-        "missing",
-        "empty"
-    ]
-
-    duplicate_keywords = [
-        "duplicate",
-        "duplicates",
-        "duplicated"
-    ]
-
-    numeric_keywords = [
-        "numeric",
-        "number",
-        "numerical"
-    ]
-
-    categorical_keywords = [
-        "categorical",
-        "category",
-        "categories"
-    ]
-
-    key_keywords = [
-        "primary key",
-        "unique key",
-        "identifier",
-        "id"
-    ]
-
-    date_keywords = [
-        "date",
-        "time",
-        "datetime"
-    ]
-    average_keywords = [
-    "average",
-    "mean"
-    ]
+from src.ai.context_builder import build_ai_context
+from src.ai.conversation_manager import ConversationManager
+from src.ai.prompt_builder import build_messages
+from src.ai.providers.mock_provider import MockProvider
+from src.domain_registry import is_supported_domain
 
 
-    if any(word in question for word in row_keywords):
-        return f"The dataset contains {profile['rows']} rows."
+SELECTED_PROVIDER = MockProvider
 
-    elif any(word in question for word in column_keywords):
-        return f"The dataset contains {profile['columns']} columns."
 
-    elif any(word in question for word in null_keywords):
-        return f"The dataset contains {profile['total_nulls']} missing values."
+def is_supported_business_knowledge(business_knowledge):
+    dataset_type = (
+        business_knowledge
+        .get("summary", {})
+        .get("dataset_type")
+    )
 
-    elif any(word in question for word in duplicate_keywords):
-        return f"The dataset contains {profile['duplicate_count']} duplicated rows."
+    return is_supported_domain(dataset_type)
 
-    elif any(word in question for word in numeric_keywords):
-        return f"The dataset contains {len(profile['numeric_columns'])} numeric columns."
 
-    elif any(word in question for word in categorical_keywords):
-        return f"The dataset contains {len(profile['categorical_columns'])} categorical columns."
+def get_suggested_questions(business_knowledge):
+    if not is_supported_business_knowledge(business_knowledge):
+        return []
 
-    elif any(word in question for word in key_keywords):
+    suggestions = []
+    insight_text = " ".join(
+        " ".join(
+            str(insight.get(key, ""))
+            for key in ["title", "finding", "impact_category", "recommendation"]
+        ).lower()
+        for insight in business_knowledge.get("insights", [])
+    )
+    health = business_knowledge.get("health", {})
 
-        if profile["possible_keys"]:
-            return (
-                "Possible unique keys: "
-                + ", ".join(profile["possible_keys"])
-            )
+    if "profit" in insight_text or "profitability" in health:
+        suggestions.append("Why is profitability low?")
 
-        return "No possible unique key was found."
+    if "customer" in insight_text or "customers" in health:
+        suggestions.append("Which customer segment should I prioritise?")
 
-    elif any(word in question for word in date_keywords):
+    if any(keyword in insight_text for keyword in ["region", "market", "geography"]):
+        suggestions.append("Which region deserves more investment?")
 
-        if profile["date_column"]:
-            return f"The detected date column is '{profile['date_column']}'."
+    if business_knowledge.get("recommendations"):
+        suggestions.append("Explain recommendation two.")
 
-        return "No date column was detected."
+    if business_knowledge.get("priorities"):
+        suggestions.append("What should management focus on first?")
 
-    
+    return suggestions[:5]
 
-    elif any(word in question for word in average_keywords):
 
-        for column in df.columns:
+def answer_question(
+    question,
+    profile,
+    df=None,
+    conversation_manager=None,
+    provider=None
+):
+    business_knowledge = profile.get("business_knowledge", {})
 
-            if column.lower() in question:
+    if not is_supported_business_knowledge(business_knowledge):
+        return "Business AI answers are not available for this domain yet."
 
-                if column in profile["numeric_columns"]:
+    conversation_manager = conversation_manager or ConversationManager()
+    provider = provider or SELECTED_PROVIDER()
+    ai_context = build_ai_context(business_knowledge)
+    messages = build_messages(
+        ai_context,
+        conversation_manager.get_history(),
+        question
+    )
+    answer = provider.generate_response(messages)
 
-                    average = df[column].mean()
+    conversation_manager.add_interaction(question, answer)
 
-                    return (
-                        f"The average value of '{column}' "
-                        f"is {average:.2f}."
-                    )
-
-                return f"'{column}' is not a numeric column, so I can't calculate an average."
-
-        return "I couldn't identify a numeric column in your question."
-
-    return "Sorry, I don't understand that question yet."
+    return answer

@@ -13,8 +13,9 @@ from src.charts import (
     create_histogram
 )
 from src.analysis_catalog import get_analysis_catalog
+from src.ai.conversation_manager import ConversationManager
 from src.profiler import build_profile
-from src.qa import answer_question
+from src.qa import answer_question, get_suggested_questions
 from src.data_loader import DataLoadingError, load_data
 from src.domain_registry import get_domain_display_name, is_supported_domain
 
@@ -254,6 +255,50 @@ def format_analysis_option(analysis):
     return analysis.get("title", "Recommended Analysis")
 
 
+def render_business_insight_cards(business_insights):
+    if not business_insights:
+        st.caption("No data-driven business insights are available for this dataset yet.")
+        return
+
+    for insight in business_insights:
+        supporting_metrics = insight.get("supporting_metrics", {})
+        metrics_html = "".join(
+            (
+                "<span style='display:inline-block;margin:0 0.45rem 0.25rem 0;"
+                "color:rgba(226,232,240,0.68);font-size:0.84rem;'>"
+                f"<strong>{html.escape(str(label))}:</strong> "
+                f"{html.escape(str(value))}</span>"
+            )
+            for label, value in supporting_metrics.items()
+        )
+        impact_category = html.escape(str(
+            insight.get("impact_category", "Business Impact")
+        ))
+        recommendation = html.escape(str(
+            insight.get("recommendation", "")
+        ))
+
+        render_card(
+            insight.get("title", "Business Insight"),
+            (
+                "<div style='display:grid;gap:0.35rem;'>"
+                f"<div>{html.escape(str(insight.get('finding', '')))}</div>"
+                "<div><span style='display:inline-block;padding:0.16rem 0.48rem;"
+                "border-radius:999px;border:1px solid rgba(14,165,233,0.38);"
+                "background:rgba(14,165,233,0.12);color:rgba(226,232,240,0.9);"
+                "font-size:0.78rem;font-weight:700;'>"
+                f"{impact_category}</span></div>"
+                "<div style='color:rgba(226,232,240,0.78);'>"
+                f"<strong>Recommendation:</strong> {recommendation}</div>"
+                "<div style='display:flex;gap:0.75rem;flex-wrap:wrap;'>"
+                f"{metrics_html}"
+                "</div>"
+                "</div>"
+            ),
+            accent="#0ea5e9"
+        )
+
+
 def render_business_metrics_summary(business_metrics):
     summary_rows = []
 
@@ -444,6 +489,7 @@ if uploaded_file is not None:
     domain_is_supported = is_supported_domain(dataset_type)
     business_metrics = profile.get("business_metrics", {})
     business_health = profile.get("business_health", {})
+    business_insights = profile.get("business_insights", [])
     available_analyses = profile.get("available_analyses", [])
     executive_priorities = profile.get("executive_priorities", [])
     analysis_catalog = get_analysis_catalog()
@@ -509,6 +555,9 @@ if uploaded_file is not None:
     if domain_is_supported:
         st.subheader("Business Health")
         render_business_health_cards(business_health)
+
+        st.subheader("Business Insights")
+        render_business_insight_cards(business_insights)
 
         st.subheader("Executive Priorities")
         render_executive_priority_cards(executive_priorities, analysis_catalog)
@@ -693,20 +742,26 @@ if uploaded_file is not None:
         )
 
     st.subheader("AI Assistant")
+    st.caption("🟡 Mock Mode")
+    st.caption("Using deterministic InsightFlow responses.")
     st.caption("Suggested questions")
-    render_badges([
-        "Which region performs best?",
-        "Which products generate the most profit?",
-        "Where might the business be losing money?",
-        "Which customer segment should management focus on?"
-    ])
+    render_badges(
+        get_suggested_questions(profile.get("business_knowledge", {})),
+        empty_text="No business suggestions available for this domain."
+    )
 
     question = st.text_input(
         "Ask a business question about your data"
     )
     if question:
+        if "ai_conversation_manager" not in st.session_state:
+            st.session_state.ai_conversation_manager = ConversationManager()
 
-        answer = answer_question(question, profile, df)
+        answer = answer_question(
+            question,
+            profile,
+            conversation_manager=st.session_state.ai_conversation_manager
+        )
 
         st.success(answer)
 
