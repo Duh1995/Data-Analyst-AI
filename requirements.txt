@@ -3,3 +3,5 @@ pandas
 plotly
 openpyxl
 openai
+anthropic
+google-genai

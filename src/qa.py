@@ -1,23 +1,12 @@
-import os
-
 from src.ai.context_builder import build_ai_context
 from src.ai.conversation_manager import ConversationManager
 from src.ai.prompt_builder import build_messages
-from src.ai.providers.mock_provider import MockProvider
-from src.ai.providers.openai_provider import OpenAIProvider
+from src.ai.provider_registry import create_provider
 from src.domain_registry import is_supported_domain
 
 
-SELECTED_PROVIDER = MockProvider
-
-
 def get_selected_provider():
-    provider_name = os.getenv("INSIGHTFLOW_AI_PROVIDER", "mock")
-
-    if provider_name.strip().lower() == "openai":
-        return OpenAIProvider()
-
-    return SELECTED_PROVIDER()
+    return create_provider()
 
 
 def is_supported_business_knowledge(business_knowledge):

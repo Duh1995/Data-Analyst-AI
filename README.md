@@ -145,6 +145,17 @@ API key. The default provider is selected with `INSIGHTFLOW_AI_PROVIDER=mock`.
 For Pro usage, set `INSIGHTFLOW_AI_PROVIDER=openai` and configure
 `OPENAI_API_KEY`. The provider interface also supports future real providers.
 
+Available provider adapters are `mock`, `openai`, `anthropic` and `gemini`.
+Anthropic uses `ANTHROPIC_API_KEY` and Gemini uses `GEMINI_API_KEY`. Optional
+model overrides are available through `OPENAI_MODEL`, `ANTHROPIC_MODEL` and
+`GEMINI_MODEL`. API keys are read only from environment variables.
+
+Run the provider tests without making real API calls:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 
 ---
 
