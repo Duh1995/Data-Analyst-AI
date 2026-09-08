@@ -22,6 +22,12 @@ from src.data_loader import DataLoadingError, load_data
 from src.domain_registry import get_domain_display_name, is_supported_domain
 
 
+st.set_page_config(
+    page_title="InsightFlow | Business Intelligence",
+    page_icon=":bar_chart:"
+)
+
+
 def render_badges(values, empty_text="None identified."):
     if not values:
         st.caption(empty_text)
@@ -545,8 +551,8 @@ def render_ai_conversation(conversation_manager):
                 st.markdown(content)
 
 
-st.title("Data Analyst AI")
-st.caption("Your Business Decision Assistant")
+st.title("InsightFlow")
+st.caption("Business Intelligence for Better Decisions")
 
 uploaded_file = st.file_uploader(
     "Upload a CSV or Excel file",

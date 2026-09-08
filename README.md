@@ -1,6 +1,6 @@
-# Data Analyst AI
+# InsightFlow
 
-Data Analyst AI is a Python-based application that automatically profiles datasets, generates insights, recommends visualizations, and creates downloadable reports.
+InsightFlow is a Business Intelligence application for business owners and managers. It transforms CSV and Excel data into deterministic business metrics, retail insights, executive priorities and practical actions, with an AI assistant that explains the available Business Knowledge.
 
 Built with:
 
