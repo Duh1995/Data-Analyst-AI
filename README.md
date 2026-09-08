@@ -14,16 +14,17 @@ Built with:
 
 # Project Overview
 
-The objective of this project is to automate the first stage of data analysis.
+The objective is to turn uploaded business data into a reliable decision flow:
+deterministic BI first, Business Knowledge second, and AI explanations last.
 
 Users can upload CSV or Excel files and instantly receive:
 
-* Dataset profiling
-* Data quality analysis
-* Automatic insights
-* Statistical summaries
+* Dataset profiling and data quality analysis
+* Business Health and deterministic metrics
+* Retail/Sales insights and Advanced Retail Intelligence
+* Executive priorities and action plans
 * Visualization recommendations
-* Downloadable reports
+* A provider-independent AI Assistant using the available Business Knowledge
 
 ---
 
@@ -49,6 +50,17 @@ The profiler identifies:
 * Numerical variables
 * Categorical variables
 * Potential unique identifiers
+
+## Business Decision Flow
+
+For supported Retail/Sales datasets, InsightFlow builds the decision layer in a
+fixed order:
+
+1. Business diagnosis and data quality
+2. Business Health and deterministic metrics
+3. Business Insights and Advanced Retail Intelligence
+4. Executive Priorities and Action Plan
+5. AI explanations grounded in the generated Business Knowledge
 
 ---
 
@@ -126,13 +138,12 @@ Supported charts:
 
 Chart recommendations are generated automatically according to the uploaded dataset.
 
-## Report Export
+## AI Assistant
 
-Users can export a report containing:
+The Free experience uses the deterministic MockProvider and does not require an
+API key. The provider interface also supports future real providers, including
+the OpenAI provider scaffold.
 
-* Dataset summary
-* Profiling information
-* Generated insights
 
 ---
 
@@ -149,20 +160,26 @@ Users can export a report containing:
 # Project Structure
 
 ```text
-data-analyst-ai/
+insightflow/
 
-├── app.py
-├── requirements.txt
-├── README.md
-├── .gitignore
+|-- app.py
+|-- requirements.txt
+|-- README.md
+|-- .gitignore
 
-├── Images/
+|-- Images/
 
-└── src/
-    ├── __init__.py
-    ├── analysis.py
-    ├── charts.py
-    └── profiler.py
+`-- src/
+    |-- profiler.py
+    |-- business_metrics.py
+    |-- business_insights.py
+    |-- decision_engine.py
+    |-- executive_action_planner.py
+    |-- charts.py
+    `-- ai/
+        |-- context_builder.py
+        |-- conversation_manager.py
+        `-- providers/
 ```
 
 ---
@@ -185,23 +202,24 @@ streamlit run app.py
 
 # Roadmap
 
-## Part 1 - Automated Data Profiling & Visualization
+## Current Baseline
 
 Completed:
 
-* Dataset profiling
-* Automatic insights
-* Intelligent visualizations
-* Report export
+* Deterministic profiling, metrics and data quality
+* Retail/Sales Business Knowledge
+* Business Health, insights, priorities and action plans
+* Advanced Retail Intelligence
+* MockProvider-based AI Assistant
+* Provider-independent AI interfaces
 
-## Part 2 - AI Integration
+## Next Priorities
 
-Planned:
+Planned improvements should strengthen the existing Retail/Sales workflow:
 
-* Natural language queries
-* AI-generated insights
-* Executive summaries
-* OpenAI integration
+* More robust business explanations and evidence presentation
+* Additional validation around uploaded business datasets
+* Controlled integration of real AI providers for Pro usage
 
 ---
 
