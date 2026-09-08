@@ -141,8 +141,9 @@ Chart recommendations are generated automatically according to the uploaded data
 ## AI Assistant
 
 The Free experience uses the deterministic MockProvider and does not require an
-API key. The provider interface also supports future real providers, including
-the OpenAI provider scaffold.
+API key. The default provider is selected with `INSIGHTFLOW_AI_PROVIDER=mock`.
+For Pro usage, set `INSIGHTFLOW_AI_PROVIDER=openai` and configure
+`OPENAI_API_KEY`. The provider interface also supports future real providers.
 
 
 ---
