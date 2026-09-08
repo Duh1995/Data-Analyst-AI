@@ -8,6 +8,7 @@ from src.analysis import (
 )
 from src.charts import (
     aggregate_metric_by_category,
+    aggregate_metric_by_date,
     create_line_chart,
     create_bar_chart,
     create_scatter_chart,
@@ -764,8 +765,13 @@ if uploaded_file is not None:
                 index=get_column_index(meaningful_numeric, preferred_metric)
             )
 
-            fig = create_line_chart(
+            line_df = aggregate_metric_by_date(
                 df,
+                profile["date_column"],
+                selected_column
+            )
+            fig = create_line_chart(
+                line_df,
                 x_col=profile["date_column"],
                 y_col=selected_column
             )
