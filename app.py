@@ -433,6 +433,39 @@ def render_developer_debug(
             )
 
 
+def render_ai_answer(answer):
+    """Render the structured answer returned by an AI provider."""
+    sections = str(answer or "").split("\n\n")
+
+    for section in sections:
+        title, separator, body = section.partition("\n")
+
+        if separator and title in {
+            "Answer",
+            "Supporting Evidence",
+            "Business Context",
+            "Recommended Action"
+        }:
+            st.markdown(f"**{title}**\n\n{body}")
+        else:
+            st.markdown(section)
+
+
+def render_ai_conversation(conversation_manager):
+    for message in conversation_manager.get_history():
+        role = message.get("role")
+        content = message.get("content", "")
+
+        if role not in {"user", "assistant"} or not content:
+            continue
+
+        with st.chat_message(role):
+            if role == "assistant":
+                render_ai_answer(content)
+            else:
+                st.markdown(content)
+
+
 st.title("Data Analyst AI")
 st.caption("Your Business Decision Assistant")
 
@@ -742,28 +775,52 @@ if uploaded_file is not None:
         )
 
     st.subheader("AI Assistant")
-    st.caption("🟡 Mock Mode")
-    st.caption("Using deterministic InsightFlow responses.")
-    st.caption("Suggested questions")
-    render_badges(
-        get_suggested_questions(profile.get("business_knowledge", {})),
-        empty_text="No business suggestions available for this domain."
+    st.caption("Mock Mode - deterministic InsightFlow responses")
+
+    dataset_key = f"{uploaded_file.name}:{uploaded_file.size}"
+
+    if st.session_state.get("ai_dataset_key") != dataset_key:
+        st.session_state.ai_dataset_key = dataset_key
+        st.session_state.ai_conversation_manager = ConversationManager()
+        st.session_state.ai_question = ""
+    elif "ai_conversation_manager" not in st.session_state:
+        st.session_state.ai_conversation_manager = ConversationManager()
+
+    suggested_questions = get_suggested_questions(
+        profile.get("business_knowledge", {})
     )
 
-    question = st.text_input(
-        "Ask a business question about your data"
-    )
-    if question:
-        if "ai_conversation_manager" not in st.session_state:
-            st.session_state.ai_conversation_manager = ConversationManager()
+    if suggested_questions:
+        st.caption("Start with a business question")
+        suggestion_columns = st.columns(min(len(suggested_questions), 2))
 
-        answer = answer_question(
-            question,
+        for index, suggestion in enumerate(suggested_questions):
+            with suggestion_columns[index % len(suggestion_columns)]:
+                if st.button(
+                    suggestion,
+                    key=f"ai_suggestion_{index}",
+                    use_container_width=True
+                ):
+                    st.session_state.ai_question = suggestion
+                    st.rerun()
+    else:
+        st.caption("No business suggestions available for this domain.")
+
+    with st.form("ai_question_form", clear_on_submit=True):
+        question = st.text_input(
+            "Ask a business question about your data",
+            key="ai_question"
+        )
+        submitted = st.form_submit_button("Ask InsightFlow", type="primary")
+
+    if submitted and question.strip():
+        answer_question(
+            question.strip(),
             profile,
             conversation_manager=st.session_state.ai_conversation_manager
         )
 
-        st.success(answer)
+    render_ai_conversation(st.session_state.ai_conversation_manager)
 
     render_developer_debug(
         df,
