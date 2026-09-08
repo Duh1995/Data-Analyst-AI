@@ -166,6 +166,8 @@ def build_executive_brief(profile):
     diagnosis = profile.get("business_diagnosis", {})
     business_health = profile.get("business_health", {})
     business_insights = profile.get("business_insights", [])
+    advanced_retail_insights = profile.get("advanced_retail_insights", [])
+    business_metrics = profile.get("business_metrics", {})
     priorities = profile.get("executive_priorities", [])
     action_plan = profile.get("executive_action_plan", [])
     lines = [
@@ -178,9 +180,20 @@ def build_executive_brief(profile):
         f"- Columns: {profile.get('columns', 0)}",
         f"- Missing values: {profile.get('null_count', 0)}",
         f"- Duplicate rows: {profile.get('duplicate_count', 0)}",
+        f"- Business areas: {', '.join(diagnosis.get('business_areas', [])) or 'Not identified'}",
         "",
         "## Business Health"
     ]
+
+    warnings = diagnosis.get("warnings", [])
+
+    if warnings:
+        lines.append("")
+        lines.append("## Data Warnings")
+        lines.extend(
+            f"- {warning.get('message', 'Review this dataset.')}"
+            for warning in warnings
+        )
 
     for area, health in business_health.items():
         label = health.get("label", area)
@@ -204,6 +217,53 @@ def build_executive_brief(profile):
             lines.append(line)
     else:
         lines.append("- No deterministic business insights are available.")
+
+    lines.append("")
+    lines.append("## Advanced Retail Intelligence")
+
+    if advanced_retail_insights:
+        for analysis in advanced_retail_insights:
+            findings = " ".join(analysis.get("findings", []))
+            line = f"- {analysis.get('title', 'Retail Analysis')}: {findings}"
+            metrics = analysis.get("metrics", {})
+
+            if metrics:
+                metric_text = "; ".join(
+                    f"{label}: {value}"
+                    for label, value in metrics.items()
+                )
+                line += f" Metrics: {metric_text}."
+
+            lines.append(line)
+    else:
+        lines.append("- No advanced retail intelligence is available.")
+
+    lines.append("")
+    lines.append("## Key Metrics")
+
+    metric_lines = []
+
+    for area, metrics in business_metrics.items():
+        for column, values in metrics.get("metrics_by_column", {}).items():
+            metric_lines.append(
+                f"- {area} - {column}: total {values.get('total')}, "
+                f"average {values.get('average')}, count {values.get('count')}"
+            )
+
+        for column, unique_count in metrics.get("unique_counts", {}).items():
+            metric_lines.append(
+                f"- {area} - {column}: unique count {unique_count}"
+            )
+
+        if area == "data_quality" and not metrics.get("metrics_by_column"):
+            metric_lines.append(
+                "- data_quality: "
+                f"null count {metrics.get('null_count', 0)}, "
+                f"null percentage {metrics.get('null_percentage', 0)}, "
+                f"duplicate count {metrics.get('duplicate_count', 0)}"
+            )
+
+    lines.extend(metric_lines or ["- No key metrics are available."])
 
     lines.append("")
     lines.append("## Executive Priorities")
