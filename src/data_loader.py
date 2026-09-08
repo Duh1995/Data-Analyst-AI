@@ -1,4 +1,5 @@
 import csv
+import zipfile
 
 import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
@@ -59,7 +60,8 @@ def load_csv_with_fallback(uploaded_file):
                 UnicodeDecodeError,
                 EmptyDataError,
                 ParserError,
-                csv.Error
+                csv.Error,
+                ValueError
             ) as error:
                 last_error = error
 
@@ -74,4 +76,15 @@ def load_data(uploaded_file):
     if uploaded_file.name.lower().endswith(".csv"):
         return load_csv_with_fallback(uploaded_file)
 
-    return pd.read_excel(uploaded_file)
+    try:
+        return pd.read_excel(uploaded_file)
+    except (
+        ImportError,
+        OSError,
+        ValueError,
+        zipfile.BadZipFile
+    ) as error:
+        raise DataLoadingError(
+            "Could not load this Excel file. Please check that it is a valid "
+            "workbook and is not corrupted."
+        ) from error
