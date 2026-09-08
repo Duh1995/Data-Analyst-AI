@@ -29,6 +29,11 @@ def get_date_column(df):
 
     for col in df.columns:
 
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            return col
+
+    for col in df.columns:
+
         if df[col].dtype == "object":
 
             try:
@@ -45,7 +50,7 @@ def get_date_column(df):
 def get_categorical_columns(df):
 
     return df.select_dtypes(
-        include=["object"]
+        include=["object", "category", "string"]
     ).columns.tolist()
 
 def get_duplicate_count(df):

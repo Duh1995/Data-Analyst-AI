@@ -176,7 +176,9 @@ def get_meaningful_numeric_columns(df, identifier_columns):
 def get_meaningful_categorical_columns(df, identifier_columns, date_column):
     meaningful_categorical_columns = []
 
-    for column in df.select_dtypes(include=["object"]).columns:
+    for column in df.select_dtypes(
+        include=["object", "category", "string"]
+    ).columns:
         if column in identifier_columns:
             continue
 
