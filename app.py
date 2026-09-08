@@ -7,6 +7,7 @@ from src.analysis import (
     get_statistics
 )
 from src.charts import (
+    aggregate_metric_by_category,
     create_line_chart,
     create_bar_chart,
     create_scatter_chart,
@@ -800,10 +801,10 @@ if uploaded_file is not None:
                 meaningful_numeric,
                 index=get_column_index(meaningful_numeric, preferred_metric)
             )
-            bar_df = (
-                df.groupby(category_column)[numeric_column]
-                .mean()
-                .reset_index()
+            bar_df = aggregate_metric_by_category(
+                df,
+                category_column,
+                numeric_column
             )
             fig = create_bar_chart(
                 bar_df,
