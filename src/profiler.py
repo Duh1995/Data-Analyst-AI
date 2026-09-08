@@ -16,7 +16,7 @@ from src.executive_action_planner import build_executive_action_plan
 def get_numeric_columns(df):
 
     return df.select_dtypes(
-        include=["int64", "float64"]
+        include=["number"]
     ).columns.tolist()
 
 

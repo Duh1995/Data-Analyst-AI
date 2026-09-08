@@ -166,7 +166,7 @@ def get_identifier_columns(df, date_column=None):
 def get_meaningful_numeric_columns(df, identifier_columns):
     meaningful_numeric_columns = []
 
-    for column in df.select_dtypes(include=["int64", "float64"]).columns:
+    for column in df.select_dtypes(include=["number"]).columns:
         if column not in identifier_columns:
             meaningful_numeric_columns.append(column)
 
