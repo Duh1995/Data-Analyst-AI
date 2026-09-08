@@ -4,6 +4,7 @@ from src.ai.providers.anthropic_provider import AnthropicProvider
 from src.ai.providers.gemini_provider import GeminiProvider
 from src.ai.providers.mock_provider import MockProvider
 from src.ai.providers.openai_provider import OpenAIProvider
+from src.product_plan import FREE_PLAN, get_current_plan
 
 
 PROVIDER_ENV_VAR = "INSIGHTFLOW_AI_PROVIDER"
@@ -47,6 +48,9 @@ def get_configured_model(provider_name):
 
 
 def create_provider(provider_name=None):
+    if provider_name is None and get_current_plan() == FREE_PLAN:
+        return MockProvider()
+
     selected_name = get_configured_provider_name(provider_name)
     provider_class = PROVIDER_CLASSES[selected_name]
 

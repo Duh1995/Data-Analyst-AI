@@ -140,15 +140,30 @@ Chart recommendations are generated automatically according to the uploaded data
 
 ## AI Assistant
 
-The Free experience uses the deterministic MockProvider and does not require an
-API key. The default provider is selected with `INSIGHTFLOW_AI_PROVIDER=mock`.
-For Pro usage, set `INSIGHTFLOW_AI_PROVIDER=openai` and configure
-`OPENAI_API_KEY`. The provider interface also supports future real providers.
+InsightFlow currently represents the product plan through the
+`INSIGHTFLOW_PLAN` environment variable. It defaults safely to `free`.
+
+The Free experience keeps deterministic BI, Business Knowledge and the
+MockProvider available without an API key. The Free flow is therefore
+functional offline and does not depend on a real AI provider.
+
+For Pro usage, set `INSIGHTFLOW_PLAN=pro`, choose a provider with
+`INSIGHTFLOW_AI_PROVIDER` and configure the matching API key. The current
+provider adapters are `openai`, `anthropic` and `gemini`; `mock` remains
+available for deterministic testing. Real providers are only selected by the
+application in Pro mode.
 
 Available provider adapters are `mock`, `openai`, `anthropic` and `gemini`.
 Anthropic uses `ANTHROPIC_API_KEY` and Gemini uses `GEMINI_API_KEY`. Optional
 model overrides are available through `OPENAI_MODEL`, `ANTHROPIC_MODEL` and
 `GEMINI_MODEL`. API keys are read only from environment variables.
+
+Free usage limits are optional and disabled by default. They can be enabled
+per session with `INSIGHTFLOW_FREE_DATASET_LIMIT` and
+`INSIGHTFLOW_FREE_AI_QUESTION_LIMIT`. When a limit is reached, the existing
+deterministic analysis remains intact and the interface presents a Pro
+discovery point. Authentication, billing and payments are intentionally out of
+scope for this stage.
 
 Run the provider tests without making real API calls:
 

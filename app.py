@@ -20,6 +20,13 @@ from src.profiler import build_profile
 from src.qa import answer_question, get_suggested_questions
 from src.data_loader import DataLoadingError, load_data
 from src.domain_registry import get_domain_display_name, is_supported_domain
+from src.product_plan import (
+    FREE_PLAN,
+    PRO_PLAN,
+    can_consume_usage,
+    get_current_plan,
+    get_plan_display_name
+)
 
 
 st.set_page_config(
@@ -685,8 +692,28 @@ def render_ai_conversation(conversation_manager):
                 st.markdown(content)
 
 
+def render_see_pro(key, title, description):
+    if get_current_plan() == PRO_PLAN:
+        return
+
+    st.caption(description)
+
+    if st.button("See Pro", key=key):
+        st.session_state.pro_details_visible = True
+
+    if st.session_state.get("pro_details_visible"):
+        render_card(
+            title,
+            "Example preview - demonstration only, not calculated from your dataset.",
+            accent="#a855f7"
+        )
+        st.button("Coming Soon", key=f"{key}_coming_soon", disabled=True)
+
+
 st.title("InsightFlow")
-st.caption("Business Intelligence for Better Decisions")
+st.caption(
+    f"Business Intelligence for Better Decisions - {get_plan_display_name()} plan"
+)
 
 uploaded_file = st.file_uploader(
     "Upload a CSV or Excel file",
@@ -694,6 +721,20 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
+    dataset_key = f"{uploaded_file.name}:{uploaded_file.size}"
+    datasets_used = st.session_state.get("datasets_used", [])
+
+    if dataset_key not in datasets_used:
+        if not can_consume_usage("datasets_per_session", len(datasets_used)):
+            st.info("The Free plan dataset limit has been reached.")
+            render_see_pro(
+                "dataset_limit_pro",
+                "Unlock more workspace capacity",
+                "Pro is designed for larger recurring analysis workflows."
+            )
+            st.stop()
+
+        st.session_state.datasets_used = [*datasets_used, dataset_key]
 
     try:
         df = load_data(uploaded_file)
@@ -815,6 +856,12 @@ if uploaded_file is not None:
         render_advanced_retail_insight_cards(
             profile.get("advanced_retail_insights", [])
         )
+        if profile.get("advanced_retail_insights"):
+            render_see_pro(
+                "advanced_retail_pro",
+                "Unlock deeper retail intelligence",
+                "Pro will add richer retail explanations and decision support here."
+            )
 
         st.subheader("Executive Priorities")
         render_executive_priority_cards(executive_priorities, analysis_catalog)
@@ -1040,14 +1087,17 @@ if uploaded_file is not None:
         )
 
     st.subheader("AI Assistant")
-    st.caption("Mock Mode - deterministic InsightFlow responses")
-
-    dataset_key = f"{uploaded_file.name}:{uploaded_file.size}"
+    st.caption(
+        "Mock Mode - deterministic InsightFlow responses"
+        if get_current_plan() == FREE_PLAN
+        else "Configured AI provider - grounded in deterministic InsightFlow knowledge"
+    )
 
     if st.session_state.get("ai_dataset_key") != dataset_key:
         st.session_state.ai_dataset_key = dataset_key
         st.session_state.ai_conversation_manager = ConversationManager()
         st.session_state.ai_question = ""
+        st.session_state.ai_questions_used = 0
     elif "ai_conversation_manager" not in st.session_state:
         st.session_state.ai_conversation_manager = ConversationManager()
 
@@ -1078,15 +1128,40 @@ if uploaded_file is not None:
         )
         submitted = st.form_submit_button("Ask InsightFlow", type="primary")
 
+    answer_generated = False
+
     if submitted and question.strip():
-        answer_question(
-            question.strip(),
-            profile,
-            conversation_manager=st.session_state.ai_conversation_manager,
-            chart_context=chart_context
-        )
+        ai_questions_used = st.session_state.get("ai_questions_used", 0)
+
+        if can_consume_usage("ai_questions_per_session", ai_questions_used):
+            answer_question(
+                question.strip(),
+                profile,
+                conversation_manager=st.session_state.ai_conversation_manager,
+                chart_context=chart_context
+            )
+            st.session_state.ai_questions_used = ai_questions_used + 1
+            answer_generated = True
+        else:
+            st.info("The Free plan AI question limit has been reached.")
+            render_see_pro(
+                "ai_limit_pro",
+                "Continue the conversation with Pro",
+                "Pro is designed for deeper, recurring business conversations."
+            )
 
     render_ai_conversation(st.session_state.ai_conversation_manager)
+
+    if (
+        answer_generated
+        and get_current_plan() == FREE_PLAN
+        and not profile.get("advanced_retail_insights")
+    ):
+        render_see_pro(
+            "ai_pro_discovery",
+            "Unlock more decision support",
+            "Pro will extend the explanation layer around your business knowledge."
+        )
 
     render_developer_debug(
         df,
