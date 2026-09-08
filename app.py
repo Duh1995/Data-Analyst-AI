@@ -243,6 +243,45 @@ def render_executive_priority_cards(executive_priorities, analysis_catalog):
                 render_executive_priority_card(priority, analyses_by_id)
 
 
+def render_executive_action_plan_cards(executive_action_plan):
+    if not executive_action_plan:
+        st.caption("No deterministic action plan is available for this dataset yet.")
+        return
+
+    for action in executive_action_plan:
+        supporting_metrics = action.get("supporting_metrics", {})
+        metrics_html = "".join(
+            (
+                "<span style='display:inline-block;margin:0 0.45rem 0.25rem 0;"
+                "color:rgba(226,232,240,0.68);font-size:0.84rem;'>"
+                f"<strong>{html.escape(str(label))}:</strong> "
+                f"{html.escape(str(value))}</span>"
+            )
+            for label, value in supporting_metrics.items()
+            if value is not None
+        )
+        impact = html.escape(str(action.get("expected_business_impact", "Unknown")))
+        effort = html.escape(str(action.get("implementation_effort", "Unknown")))
+
+        render_card(
+            f"#{action.get('implementation_priority', '-')} {action.get('title', 'Executive Action')}",
+            (
+                "<div style='display:grid;gap:0.35rem;'>"
+                f"<div>{html.escape(str(action.get('business_problem', '')))}</div>"
+                "<div style='color:rgba(226,232,240,0.9);'>"
+                f"<strong>Next step:</strong> {html.escape(str(action.get('recommended_action', '')))}"
+                "</div>"
+                "<div style='display:flex;gap:0.75rem;flex-wrap:wrap;"
+                "color:rgba(226,232,240,0.68);font-size:0.86rem;'>"
+                f"<span>Impact: {impact}</span><span>Effort: {effort}</span>"
+                "</div>"
+                f"<div style='display:flex;gap:0.75rem;flex-wrap:wrap;'>{metrics_html}</div>"
+                "</div>"
+            ),
+            accent="#f59e0b"
+        )
+
+
 def get_available_analysis_options(available_analyses):
     return [
         analysis
@@ -296,6 +335,44 @@ def render_business_insight_cards(business_insights):
                 "</div>"
             ),
             accent="#0ea5e9"
+        )
+
+
+def render_advanced_retail_insight_cards(advanced_retail_insights):
+    if not advanced_retail_insights:
+        st.caption("No advanced retail intelligence is available for this dataset yet.")
+        return
+
+    for analysis in advanced_retail_insights:
+        findings = analysis.get("findings", [])
+        metrics = analysis.get("metrics", {})
+        findings_html = "".join(
+            f"<li>{html.escape(str(finding))}</li>"
+            for finding in findings
+        )
+        metrics_html = "".join(
+            (
+                "<span style='display:inline-block;margin:0 0.45rem 0.25rem 0;"
+                "color:rgba(226,232,240,0.68);font-size:0.84rem;'>"
+                f"<strong>{html.escape(str(label))}:</strong> "
+                f"{html.escape(str(value))}</span>"
+            )
+            for label, value in metrics.items()
+            if value is not None
+        )
+
+        render_card(
+            analysis.get("title", "Advanced Retail Analysis"),
+            (
+                "<div style='display:grid;gap:0.35rem;'>"
+                f"<div style='color:rgba(226,232,240,0.68);font-size:0.84rem;'>"
+                f"Grain: {html.escape(str(analysis.get('grain', 'business area')))} - "
+                f"Metric: {html.escape(str(analysis.get('metric', 'metric')))}</div>"
+                f"<ul style='margin:0;padding-left:1.2rem;'>{findings_html}</ul>"
+                f"<div style='display:flex;gap:0.75rem;flex-wrap:wrap;'>{metrics_html}</div>"
+                "</div>"
+            ),
+            accent="#14b8a6"
         )
 
 
@@ -592,8 +669,18 @@ if uploaded_file is not None:
         st.subheader("Business Insights")
         render_business_insight_cards(business_insights)
 
+        st.subheader("Advanced Retail Intelligence")
+        render_advanced_retail_insight_cards(
+            profile.get("advanced_retail_insights", [])
+        )
+
         st.subheader("Executive Priorities")
         render_executive_priority_cards(executive_priorities, analysis_catalog)
+
+        st.subheader("Executive Action Plan")
+        render_executive_action_plan_cards(
+            profile.get("executive_action_plan", [])
+        )
 
     st.subheader("Charts")
     available_analysis_options = get_available_analysis_options(available_analyses)

@@ -86,6 +86,30 @@ def build_priority_lines(priorities):
     ]
 
 
+def build_action_plan_lines(action_plan):
+    lines = []
+
+    for index, action in enumerate(action_plan, start=1):
+        title = action.get("title", f"Action {index}")
+        recommended_action = action.get(
+            "recommended_action",
+            "No recommended action provided."
+        )
+        impact = action.get("expected_business_impact")
+        effort = action.get("implementation_effort")
+        line = (
+            f"{action.get('implementation_priority', index)}. {title}: "
+            f"{recommended_action}"
+        )
+
+        if impact or effort:
+            line += f" Impact: {impact or 'Unknown'}; Effort: {effort or 'Unknown'}."
+
+        lines.append(line)
+
+    return lines
+
+
 def build_metric_lines(key_metrics):
     lines = []
 
@@ -168,6 +192,12 @@ def build_ai_context(business_knowledge):
         format_section(
             "Executive Priorities",
             build_priority_lines(business_knowledge.get("priorities", []))
+        ),
+        format_section(
+            "Executive Action Plan",
+            build_action_plan_lines(
+                business_knowledge.get("executive_action_plan", [])
+            )
         ),
         format_section(
             "Key Metrics",

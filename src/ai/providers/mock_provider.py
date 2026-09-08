@@ -495,15 +495,26 @@ class MockProvider(AIProvider):
 
     def build_strategic_advice_response(self, business_knowledge):
         priorities = self.get_available_lines(business_knowledge, "Executive Priorities")
+        action_plan = self.get_available_lines(
+            business_knowledge,
+            "Executive Action Plan"
+        )
         recommendations = self.get_available_lines(business_knowledge, "Recommendations")
         insights = self.get_available_lines(business_knowledge, "Business Insights")
-        evidence = priorities[:2] + recommendations[:2] + insights[:1]
+        evidence = (
+            priorities[:2]
+            + action_plan[:2]
+            + recommendations[:2]
+            + insights[:1]
+        )
 
         if not evidence:
             return UNAVAILABLE_MESSAGE
 
         action = (
-            self.extract_action_from_line(priorities[0])
+            self.extract_action_from_line(action_plan[0])
+            if action_plan
+            else self.extract_action_from_line(priorities[0])
             if priorities
             else self.extract_action_from_line(recommendations[0])
         )
@@ -511,7 +522,7 @@ class MockProvider(AIProvider):
         return self.build_response(
             "Focus first on the highest-ranked priority supported by recommendations and insights.",
             evidence,
-            "Strategic advice is limited to ranked priorities, recommendations and deterministic insights.",
+            "Strategic advice is limited to ranked priorities, the deterministic action plan, recommendations and insights.",
             action
         )
 
@@ -524,6 +535,7 @@ class MockProvider(AIProvider):
             "Business Insights",
             "Recommendations",
             "Executive Priorities",
+            "Executive Action Plan",
             "Key Metrics"
         ]:
             lines.extend(self.get_available_lines(business_knowledge, section_name))
