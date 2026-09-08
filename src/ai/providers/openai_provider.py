@@ -26,11 +26,25 @@ class OpenAIProvider(AIProvider):
                 "Install the openai package to enable AI-generated answers."
             )
 
-        client = OpenAI(api_key=self.api_key)
-        response = client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.2
-        )
+        try:
+            client = OpenAI(api_key=self.api_key)
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.2
+            )
 
-        return response.choices[0].message.content
+            content = response.choices[0].message.content
+
+            if content:
+                return content
+
+            return (
+                "The OpenAI provider returned an empty answer. "
+                "Please try the question again."
+            )
+        except Exception:
+            return (
+                "The OpenAI provider could not complete this request. "
+                "Check the API key, model and network configuration, then try again."
+            )
