@@ -163,7 +163,27 @@ def build_advanced_retail_lines(advanced_retail_insights):
     return lines
 
 
-def build_ai_context(business_knowledge):
+def build_chart_context_lines(chart_context):
+    if not chart_context:
+        return []
+
+    labels = [
+        ("Analysis", chart_context.get("analysis")),
+        ("Business question", chart_context.get("business_question")),
+        ("Chart type", chart_context.get("chart_type")),
+        ("Dimension", chart_context.get("dimension")),
+        ("Metric", chart_context.get("metric")),
+        ("Aggregation", chart_context.get("aggregation"))
+    ]
+
+    return [
+        f"{label}: {value}"
+        for label, value in labels
+        if value
+    ]
+
+
+def build_ai_context(business_knowledge, chart_context=None):
     business_knowledge = business_knowledge or {}
 
     sections = [
@@ -198,6 +218,10 @@ def build_ai_context(business_knowledge):
             build_action_plan_lines(
                 business_knowledge.get("executive_action_plan", [])
             )
+        ),
+        format_section(
+            "Current Chart Context",
+            build_chart_context_lines(chart_context)
         ),
         format_section(
             "Key Metrics",

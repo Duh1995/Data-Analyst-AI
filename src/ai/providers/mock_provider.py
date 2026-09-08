@@ -203,7 +203,7 @@ class MockProvider(AIProvider):
             )
 
         if intent == "explain_current_chart":
-            return CHART_UNAVAILABLE_MESSAGE
+            return self.build_chart_response(business_knowledge)
 
         if intent == "compare_business_areas":
             return self.build_comparison_response(business_knowledge, active_question)
@@ -524,6 +524,21 @@ class MockProvider(AIProvider):
             evidence,
             "Strategic advice is limited to ranked priorities, the deterministic action plan, recommendations and insights.",
             action
+        )
+
+    def build_chart_response(self, business_knowledge):
+        chart_context = self.get_available_lines(
+            business_knowledge,
+            "Current Chart Context"
+        )
+
+        if not chart_context:
+            return CHART_UNAVAILABLE_MESSAGE
+
+        return self.build_response(
+            "The current chart is based on the selected deterministic analysis.",
+            chart_context,
+            "Chart context comes from the current InsightFlow analysis selection."
         )
 
     def get_searchable_business_lines(self, business_knowledge):

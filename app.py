@@ -893,6 +893,12 @@ if uploaded_file is not None:
     elif preferred_chart == "histogram" and meaningful_numeric:
         selected_chart_type = "histogram"
 
+    chart_context = {
+        "analysis": selected_catalog_analysis.get("title"),
+        "business_question": selected_catalog_analysis.get("business_question"),
+        "chart_type": format_chart_name(selected_chart_type)
+    }
+
     if selected_chart_type is not None:
 
         st.write(
@@ -918,6 +924,11 @@ if uploaded_file is not None:
                 profile["date_column"],
                 selected_column
             )
+            chart_context.update({
+                "dimension": profile["date_column"],
+                "metric": selected_column,
+                "aggregation": "sum"
+            })
             fig = create_line_chart(
                 line_df,
                 x_col=profile["date_column"],
@@ -960,6 +971,11 @@ if uploaded_file is not None:
                 category_column,
                 numeric_column
             )
+            chart_context.update({
+                "dimension": category_column,
+                "metric": numeric_column,
+                "aggregation": "sum"
+            })
             fig = create_bar_chart(
                 bar_df,
                 x_col=category_column,
@@ -977,6 +993,10 @@ if uploaded_file is not None:
     elif selected_chart_type == "scatter":
 
         if scatter_x_column and scatter_y_column:
+            chart_context.update({
+                "dimension": scatter_x_column,
+                "metric": scatter_y_column
+            })
             fig = create_scatter_chart(
                 df,
                 x_col=scatter_x_column,
@@ -996,6 +1016,9 @@ if uploaded_file is not None:
         if meaningful_numeric:
 
             numeric_column = meaningful_numeric[0]
+            chart_context.update({
+                "metric": numeric_column
+            })
 
             fig = create_histogram(
                 df,
@@ -1059,7 +1082,8 @@ if uploaded_file is not None:
         answer_question(
             question.strip(),
             profile,
-            conversation_manager=st.session_state.ai_conversation_manager
+            conversation_manager=st.session_state.ai_conversation_manager,
+            chart_context=chart_context
         )
 
     render_ai_conversation(st.session_state.ai_conversation_manager)

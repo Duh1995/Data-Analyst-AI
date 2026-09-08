@@ -55,7 +55,8 @@ def answer_question(
     profile,
     df=None,
     conversation_manager=None,
-    provider=None
+    provider=None,
+    chart_context=None
 ):
     business_knowledge = profile.get("business_knowledge", {})
 
@@ -68,7 +69,10 @@ def answer_question(
 
     conversation_manager = conversation_manager or ConversationManager()
     provider = provider or SELECTED_PROVIDER()
-    ai_context = build_ai_context(business_knowledge)
+    ai_context = build_ai_context(
+        business_knowledge,
+        chart_context=chart_context
+    )
     messages = build_messages(
         ai_context,
         conversation_manager.get_history(),
