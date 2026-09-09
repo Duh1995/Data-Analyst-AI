@@ -458,7 +458,7 @@ def render_sales_analysis_card(df, analysis):
     return True
 
 
-def render_sales_custom_analysis(df, profile):
+def render_sales_custom_analysis(df, profile, key_prefix="sales", area_label="sales"):
     metric_options = list(profile.get("meaningful_numeric_columns", []))
     dimension_options = []
     if profile.get("date_column"):
@@ -467,16 +467,20 @@ def render_sales_custom_analysis(df, profile):
 
     with st.expander("Create Custom Analysis", expanded=False):
         if not metric_options:
-            st.info("A custom sales analysis needs at least one valid numeric metric.")
+            st.info(f"A custom {area_label} analysis needs at least one valid numeric metric.")
             return
 
-        metric = st.selectbox("Metric", metric_options, key="sales_custom_metric")
+        metric = st.selectbox("Metric", metric_options, key=f"{key_prefix}_custom_metric")
         dimension = st.selectbox(
             "Dimension",
             ["No dimension", *dimension_options],
-            key="sales_custom_dimension"
+            key=f"{key_prefix}_custom_dimension"
         )
-        aggregation = st.selectbox("Aggregation", ["Sum"], key="sales_custom_aggregation")
+        aggregation = st.selectbox(
+            "Aggregation",
+            ["Sum"],
+            key=f"{key_prefix}_custom_aggregation"
+        )
         chart_options = (
             ["Line"]
             if dimension == profile.get("date_column")
@@ -485,10 +489,14 @@ def render_sales_custom_analysis(df, profile):
         chart_type = st.selectbox(
             "Chart type",
             chart_options,
-            key="sales_custom_chart_type"
+            key=f"{key_prefix}_custom_chart_type"
         )
 
-        if not st.button("Create analysis", key="sales_custom_submit", type="primary"):
+        if not st.button(
+            "Create analysis",
+            key=f"{key_prefix}_custom_submit",
+            type="primary"
+        ):
             return
 
         if chart_type == "Line":
@@ -501,7 +509,7 @@ def render_sales_custom_analysis(df, profile):
             figure = create_histogram(df, metric)
 
         with st.container(border=True):
-            st.markdown("**Custom sales analysis**")
+            st.markdown(f"**Custom {area_label} analysis**")
             st.caption(f"{metric} - {aggregation} - {chart_type}")
             st.plotly_chart(figure, use_container_width=True)
 
@@ -850,6 +858,200 @@ def render_profitability_page(df, profile, dataset_name):
     render_profitability_ai_entry(profile, dataset_name)
     render_key_business_insight(
         get_profitability_insight(profile.get("business_insights", []))
+    )
+
+
+CUSTOMER_ANALYSIS_PRIORITY = [
+    "sales_by_customer_segment",
+    "profitability_by_customer_segment"
+]
+
+
+def get_customer_kpis(profile):
+    business_metrics = profile.get("business_metrics", {})
+    kpis = []
+    customer_metrics = business_metrics.get("customers", {})
+
+    for column, value in customer_metrics.get("unique_counts", {}).items():
+        kpis.append({
+            "label": "Total Customers",
+            "value": format_overview_value(value),
+            "supporting_text": str(column)
+        })
+        break
+
+    sales_metrics = business_metrics.get("sales", {})
+    for column, values in sales_metrics.get("metrics_by_column", {}).items():
+        if values.get("total") is not None:
+            kpis.append({
+                "label": "Revenue",
+                "value": format_overview_value(values["total"]),
+                "supporting_text": str(column)
+            })
+            break
+
+    if len(kpis) < 3:
+        for column, values in sales_metrics.get("metrics_by_column", {}).items():
+            if values.get("count") is not None:
+                kpis.append({
+                    "label": "Sales records",
+                    "value": format_overview_value(values["count"]),
+                    "supporting_text": str(column)
+                })
+                break
+
+    if len(kpis) < 3:
+        kpis.append({
+            "label": "Records",
+            "value": format_overview_value(profile.get("rows", 0)),
+            "supporting_text": "Dataset"
+        })
+
+    while len(kpis) < 3:
+        kpis.append({
+            "label": "Customer metric",
+            "value": None,
+            "supporting_text": "Not available in this dataset"
+        })
+
+    return kpis[:3]
+
+
+def get_customer_analyses(available_analyses, analysis_catalog):
+    catalog_by_id = get_analysis_by_id(analysis_catalog)
+    available_by_id = get_available_analysis_by_id(available_analyses)
+    selected = []
+
+    for analysis_id in CUSTOMER_ANALYSIS_PRIORITY:
+        resolved = available_by_id.get(analysis_id)
+        if resolved and resolved.get("available"):
+            selected.append({
+                **catalog_by_id.get(analysis_id, {}),
+                **resolved
+            })
+
+    return selected[:4]
+
+
+def render_customer_advanced_card(analysis):
+    findings = analysis.get("findings", [])
+    if not findings:
+        return False
+
+    body = "<ul style='margin:0;padding-left:1.2rem;'>"
+    body += "".join(
+        f"<li>{html.escape(str(finding))}</li>"
+        for finding in findings[:2]
+    )
+    body += "</ul>"
+    render_card(
+        analysis.get("title", "Customer intelligence"),
+        body,
+        accent="#9b7cff"
+    )
+    return True
+
+
+def get_customer_advanced_analyses(profile):
+    return [
+        analysis
+        for analysis in profile.get("advanced_retail_insights", [])
+        if analysis.get("analysis_id") in {
+            "customer_concentration",
+            "customer_dependency"
+        }
+    ]
+
+
+def render_customers_ai_entry(profile, dataset_name):
+    with st.expander("Ask InsightFlow", expanded=False):
+        st.caption("Ask a customer question grounded in the available Business Knowledge.")
+        question = st.text_input(
+            "What would you like to know?",
+            placeholder="Which customer segment generates the most revenue?",
+            key="customers_ai_question"
+        )
+        submitted = st.button(
+            "Ask InsightFlow",
+            key="customers_ai_submit",
+            type="primary"
+        )
+
+        dataset_key = f"{dataset_name}:customers"
+        if st.session_state.get("customers_ai_dataset_key") != dataset_key:
+            st.session_state.customers_ai_dataset_key = dataset_key
+            st.session_state.customers_ai_conversation_manager = ConversationManager()
+
+        if submitted and question.strip():
+            questions_used = st.session_state.get("ai_questions_used", 0)
+            if can_consume_usage("ai_questions_per_session", questions_used):
+                answer_question(
+                    question.strip(),
+                    profile,
+                    conversation_manager=st.session_state.customers_ai_conversation_manager
+                )
+                st.session_state.ai_questions_used = questions_used + 1
+            else:
+                st.info("The Free plan AI question limit has been reached.")
+
+        render_ai_conversation(
+            st.session_state.customers_ai_conversation_manager
+        )
+
+
+def get_customers_insight(business_insights):
+    customer_terms = ("customer", "segment", "consumer", "client")
+    for insight in business_insights:
+        text = " ".join(
+            str(insight.get(key, ""))
+            for key in ("title", "finding", "recommendation")
+        ).lower()
+        if any(term in text for term in customer_terms):
+            return insight
+    return None
+
+
+def render_customers_page(df, profile, dataset_name):
+    st.header("Customers")
+    st.caption("Understand your customer base, value and concentration.")
+
+    kpis = get_customer_kpis(profile)
+    kpi_columns = st.columns(3)
+    for column, kpi in zip(kpi_columns, kpis):
+        with column:
+            render_kpi_card(
+                kpi["label"],
+                kpi["value"],
+                supporting_text=kpi["supporting_text"]
+            )
+
+    analyses = get_customer_analyses(
+        profile.get("available_analyses", []),
+        get_analysis_catalog()
+    )
+    st.subheader("Customer analyses")
+    rendered_count = 0
+    for index in range(0, len(analyses), 2):
+        columns = st.columns(2)
+        for column, analysis in zip(columns, analyses[index:index + 2]):
+            with column:
+                if render_profitability_analysis_card(df, analysis):
+                    rendered_count += 1
+
+    for analysis in get_customer_advanced_analyses(profile):
+        if render_customer_advanced_card(analysis):
+            rendered_count += 1
+
+    render_analysis_coverage("customers", has_analysis=rendered_count == 4)
+    render_sales_custom_analysis(
+        df,
+        profile,
+        key_prefix="customers",
+        area_label="customer"
+    )
+    render_customers_ai_entry(profile, dataset_name)
+    render_key_business_insight(
+        get_customers_insight(profile.get("business_insights", []))
     )
 
 
@@ -1705,6 +1907,12 @@ if uploaded_file is not None:
             )
         elif active_page == "Profitability":
             render_profitability_page(
+                df,
+                profile,
+                uploaded_file.name
+            )
+        elif active_page == "Customers":
+            render_customers_page(
                 df,
                 profile,
                 uploaded_file.name

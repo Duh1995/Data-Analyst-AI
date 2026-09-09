@@ -3,6 +3,9 @@ import unittest
 from app import (
     BUSINESS_AREA_CONFIG,
     get_overview_kpis,
+    get_customer_analyses,
+    get_customer_kpis,
+    get_customer_advanced_analyses,
     get_profitability_analyses,
     get_profitability_kpis,
     get_sales_analyses,
@@ -154,6 +157,56 @@ class OverviewKpiTests(unittest.TestCase):
         self.assertNotIn(
             "profitability_by_customer_segment",
             [analysis["id"] for analysis in selected]
+        )
+
+    def test_customer_kpis_keep_unavailable_customer_value_explicit(self):
+        profile = {
+            "rows": 8,
+            "business_metrics": {
+                "customers": {
+                    "unique_counts": {"Customer ID": 3}
+                }
+            }
+        }
+
+        kpis = get_customer_kpis(profile)
+        self.assertEqual(kpis[0]["label"], "Total Customers")
+        self.assertEqual(kpis[0]["value"], "3")
+        self.assertEqual(kpis[1]["label"], "Records")
+        self.assertIsNone(kpis[2]["value"])
+
+    def test_customer_analysis_selection_excludes_unresolved_items(self):
+        available = [
+            {
+                "id": "sales_by_customer_segment",
+                "available": True,
+                "matched_concepts": {"metrics": {}, "dimensions": {}}
+            },
+            {
+                "id": "profitability_by_customer_segment",
+                "available": False,
+                "matched_concepts": {"metrics": {}, "dimensions": {}}
+            }
+        ]
+
+        selected = get_customer_analyses(available, get_analysis_catalog())
+        self.assertEqual(
+            [analysis["id"] for analysis in selected],
+            ["sales_by_customer_segment"]
+        )
+
+    def test_customer_advanced_surface_is_restricted_to_customer_intelligence(self):
+        profile = {
+            "advanced_retail_insights": [
+                {"analysis_id": "customer_concentration"},
+                {"analysis_id": "customer_dependency"},
+                {"analysis_id": "product_dependency"}
+            ]
+        }
+
+        self.assertEqual(
+            [analysis["analysis_id"] for analysis in get_customer_advanced_analyses(profile)],
+            ["customer_concentration", "customer_dependency"]
         )
 
 
