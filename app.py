@@ -192,15 +192,160 @@ def render_landing_header(container=None):
 
 
 def render_dataset_header(uploaded_file):
-    st.markdown(
-        (
-            '<div class="if-dataset-header">'
-            f'<span class="if-dataset-name">{html.escape(uploaded_file.name)}</span>'
-            f'<span class="if-dataset-meta">{get_plan_display_name()} plan - ready for analysis</span>'
-            '</div>'
-        ),
-        unsafe_allow_html=True
+    header_column, action_column = st.columns([5, 1])
+
+    with header_column:
+        st.markdown(
+            (
+                '<div class="if-dataset-header">'
+                f'<span class="if-dataset-name">{html.escape(uploaded_file.name)}</span>'
+                f'<span class="if-dataset-meta">{get_plan_display_name()} plan - ready for analysis</span>'
+                '</div>'
+            ),
+            unsafe_allow_html=True
+        )
+
+    with action_column:
+        if st.button("Change dataset", key="change_dataset"):
+            st.session_state.dataset_upload_version = (
+                st.session_state.get("dataset_upload_version", 0) + 1
+            )
+            st.rerun()
+
+
+BUSINESS_AREA_CONFIG = {
+    "Sales": {
+        "description": "Understand how your revenue and sales performance are evolving."
+    },
+    "Profitability": {
+        "description": "Understand where your business is creating or losing margin."
+    },
+    "Customers": {
+        "description": "Understand your customer base and concentration."
+    },
+    "Products": {
+        "description": "Understand which products drive your business."
+    }
+}
+
+
+def render_main_navigation():
+    return st.radio(
+        "Business area",
+        ["Overview", *BUSINESS_AREA_CONFIG],
+        horizontal=True,
+        key="main_navigation",
+        label_visibility="collapsed"
     )
+
+
+def render_kpi_card(
+    label,
+    value=None,
+    comparison=None,
+    status=None,
+    supporting_text=None
+):
+    display_value = "Not available" if value is None else value
+    metric_help = supporting_text or status
+    st.metric(label, display_value, delta=comparison, help=metric_help)
+
+
+def render_analysis_grid(analysis_cards=None):
+    analysis_cards = list(analysis_cards or [])[:4]
+
+    if not analysis_cards:
+        st.caption("Area-specific analyses will appear when they are available.")
+        return
+
+    columns = st.columns(2)
+    for index, analysis in enumerate(analysis_cards):
+        with columns[index % 2]:
+            render_card(
+                analysis.get("title", "Business analysis"),
+                html.escape(analysis.get("description", "Analysis available.")),
+                accent="#5b9cff"
+            )
+
+
+def render_analysis_coverage(area, has_analysis=False, missing_concepts=None):
+    if has_analysis:
+        return
+
+    missing_text = ""
+    if missing_concepts:
+        missing_text = " Missing concepts: " + ", ".join(missing_concepts) + "."
+
+    st.info(
+        f"Based on the information available in your dataset, InsightFlow "
+        f"could only provide a limited analysis of {area.lower()}."
+        f"{missing_text}"
+    )
+
+
+def render_custom_analysis_entry(key):
+    with st.expander("Create Custom Analysis", expanded=False):
+        st.caption("Build a supported business view from the available dataset concepts.")
+        st.selectbox("Metric", ["Available in a future analysis step"], key=f"{key}_metric", disabled=True)
+        st.selectbox("Dimension", ["Available in a future analysis step"], key=f"{key}_dimension", disabled=True)
+        st.button("Create analysis", key=f"{key}_submit", disabled=True)
+
+
+def render_ask_insightflow_entry(key):
+    with st.expander("Ask InsightFlow", expanded=False):
+        st.caption("Ask a business question from the Overview AI Assistant.")
+        st.text_input(
+            "What would you like to know?",
+            placeholder="Ask about your business...",
+            key=f"{key}_question",
+            disabled=True
+        )
+
+
+def render_key_business_insight(insight=None):
+    st.markdown("**Key business insight**")
+
+    if not insight:
+        st.caption("No area-specific insight is available yet.")
+        return
+
+    insight_text = insight.get("finding") or insight.get("title", "Business insight")
+    body = html.escape(str(insight_text))
+    recommendation = insight.get("recommendation")
+    if recommendation:
+        body += f"<br><strong>Recommended action:</strong> {html.escape(str(recommendation))}"
+
+    render_card(
+        insight.get("title", "Business insight"),
+        body,
+        accent="#5b9cff"
+    )
+
+
+def render_business_area_page(area, profile, business_insights=None):
+    config = BUSINESS_AREA_CONFIG[area]
+    st.header(area)
+    st.caption(config["description"])
+
+    kpi_columns = st.columns(3)
+    for index, label in enumerate(("Primary KPI", "Secondary KPI", "Supporting KPI")):
+        with kpi_columns[index]:
+            render_kpi_card(
+                label,
+                supporting_text="Area-specific KPI selection will be added in the next unit."
+            )
+
+    st.subheader("Analyses")
+    render_analysis_grid()
+    render_analysis_coverage(area)
+
+    action_columns = st.columns(2)
+    with action_columns[0]:
+        render_custom_analysis_entry(f"{area.lower()}_custom")
+    with action_columns[1]:
+        render_ask_insightflow_entry(f"{area.lower()}_ask")
+
+    render_key_business_insight()
 
 
 render_app_styles()
@@ -998,7 +1143,8 @@ def render_see_pro(key, title, description):
 landing_placeholder = st.empty()
 uploaded_file = st.file_uploader(
     "Upload a CSV or Excel file",
-    type=["csv", "xlsx"]
+    type=["csv", "xlsx"],
+    key=f"dataset_upload_{st.session_state.get('dataset_upload_version', 0)}"
 )
 
 if uploaded_file is None:
@@ -1037,6 +1183,7 @@ if uploaded_file is not None:
 
     st.success("File loaded successfully.")
     render_dataset_header(uploaded_file)
+    active_page = render_main_navigation()
 
     profile = build_profile(df)
     meaningful_numeric = profile["meaningful_numeric_columns"]
@@ -1091,6 +1238,14 @@ if uploaded_file is not None:
     )
     recommended_catalog_analysis = recommended_catalog_analysis or {}
     recommended_resolved_analysis = recommended_resolved_analysis or {}
+
+    if active_page != "Overview":
+        render_business_area_page(
+            active_page,
+            profile,
+            business_insights
+        )
+        st.stop()
 
     render_overview(
         profile,

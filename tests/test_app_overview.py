@@ -1,9 +1,17 @@
 import unittest
 
-from app import get_overview_kpis
+from app import BUSINESS_AREA_CONFIG, get_overview_kpis
 
 
 class OverviewKpiTests(unittest.TestCase):
+    def test_business_area_navigation_has_shared_page_configuration(self):
+        self.assertEqual(
+            list(BUSINESS_AREA_CONFIG),
+            ["Sales", "Profitability", "Customers", "Products"]
+        )
+        for config in BUSINESS_AREA_CONFIG.values():
+            self.assertTrue(config["description"])
+
     def test_overview_uses_available_business_metrics(self):
         profile = {
             "rows": 12,
