@@ -348,6 +348,241 @@ def render_business_area_page(area, profile, business_insights=None):
     render_key_business_insight()
 
 
+SALES_ANALYSIS_PRIORITY = [
+    "sales_over_time",
+    "sales_by_product_category",
+    "sales_by_geography",
+    "sales_by_customer_segment"
+]
+
+
+def get_sales_kpis(profile):
+    business_metrics = profile.get("business_metrics", {})
+    kpis = []
+
+    for area, label in (("sales", "Revenue"), ("profitability", "Profit")):
+        metric_group = business_metrics.get(area, {})
+        for column, values in metric_group.get("metrics_by_column", {}).items():
+            if values.get("total") is not None:
+                metric_label = (
+                    "Margin"
+                    if area == "profitability"
+                    and "margin" in str(column).lower()
+                    and "profit" not in str(column).lower()
+                    else label
+                )
+                kpis.append({
+                    "label": metric_label,
+                    "value": format_overview_value(values["total"]),
+                    "supporting_text": str(column)
+                })
+                break
+
+    customer_metrics = business_metrics.get("customers", {})
+    for column, value in customer_metrics.get("unique_counts", {}).items():
+        kpis.append({
+            "label": "Customers",
+            "value": format_overview_value(value),
+            "supporting_text": str(column)
+        })
+        break
+
+    if len(kpis) < 3:
+        sales_metrics = business_metrics.get("sales", {})
+        for column, values in sales_metrics.get("metrics_by_column", {}).items():
+            if values.get("count") is not None:
+                kpis.append({
+                    "label": "Sales records",
+                    "value": format_overview_value(values["count"]),
+                    "supporting_text": str(column)
+                })
+                break
+
+    if len(kpis) < 3:
+        kpis.append({
+            "label": "Records",
+            "value": format_overview_value(profile.get("rows", 0)),
+            "supporting_text": "Dataset"
+        })
+
+    return kpis[:3]
+
+
+def get_sales_analyses(available_analyses, analysis_catalog):
+    catalog_by_id = get_analysis_by_id(analysis_catalog)
+    available_by_id = get_available_analysis_by_id(available_analyses)
+    selected = []
+
+    for analysis_id in SALES_ANALYSIS_PRIORITY:
+        resolved = available_by_id.get(analysis_id)
+        if resolved and resolved.get("available"):
+            selected.append({
+                **catalog_by_id.get(analysis_id, {}),
+                **resolved
+            })
+
+    return selected[:4]
+
+
+def render_sales_analysis_card(df, analysis):
+    matched_concepts = analysis.get("matched_concepts", {})
+    metrics = matched_concepts.get("metrics", {})
+    dimensions = matched_concepts.get("dimensions", {})
+    metric_column = next(iter(metrics.values()), [None])[0]
+    dimension_column = next(iter(dimensions.values()), [None])[0]
+
+    if not metric_column:
+        return False
+
+    with st.container(border=True):
+        st.markdown(f"**{html.escape(analysis.get('title', 'Sales analysis'))}**")
+        st.caption(analysis.get("business_question", "Deterministic sales analysis."))
+
+        if analysis.get("preferred_chart") == "line" and dimension_column:
+            chart_df = aggregate_metric_by_date(df, dimension_column, metric_column)
+            if chart_df.empty:
+                st.caption("No valid time values are available for this analysis.")
+                return False
+            figure = create_line_chart(chart_df, dimension_column, metric_column)
+        elif analysis.get("preferred_chart") == "bar" and dimension_column:
+            chart_df = aggregate_metric_by_category(df, dimension_column, metric_column)
+            if chart_df.empty:
+                st.caption("No complete category values are available for this analysis.")
+                return False
+            figure = create_bar_chart(chart_df, dimension_column, metric_column)
+        else:
+            return False
+
+        st.plotly_chart(figure, use_container_width=True)
+
+    return True
+
+
+def render_sales_custom_analysis(df, profile):
+    metric_options = list(profile.get("meaningful_numeric_columns", []))
+    dimension_options = []
+    if profile.get("date_column"):
+        dimension_options.append(profile["date_column"])
+    dimension_options.extend(profile.get("meaningful_categorical_columns", []))
+
+    with st.expander("Create Custom Analysis", expanded=False):
+        if not metric_options:
+            st.info("A custom sales analysis needs at least one valid numeric metric.")
+            return
+
+        metric = st.selectbox("Metric", metric_options, key="sales_custom_metric")
+        dimension = st.selectbox(
+            "Dimension",
+            ["No dimension", *dimension_options],
+            key="sales_custom_dimension"
+        )
+        aggregation = st.selectbox("Aggregation", ["Sum"], key="sales_custom_aggregation")
+        chart_options = (
+            ["Line"]
+            if dimension == profile.get("date_column")
+            else (["Bar"] if dimension != "No dimension" else ["Histogram"])
+        )
+        chart_type = st.selectbox(
+            "Chart type",
+            chart_options,
+            key="sales_custom_chart_type"
+        )
+
+        if not st.button("Create analysis", key="sales_custom_submit", type="primary"):
+            return
+
+        if chart_type == "Line":
+            result = aggregate_metric_by_date(df, dimension, metric)
+            figure = create_line_chart(result, dimension, metric)
+        elif chart_type == "Bar":
+            result = aggregate_metric_by_category(df, dimension, metric)
+            figure = create_bar_chart(result, dimension, metric)
+        else:
+            figure = create_histogram(df, metric)
+
+        with st.container(border=True):
+            st.markdown("**Custom sales analysis**")
+            st.caption(f"{metric} - {aggregation} - {chart_type}")
+            st.plotly_chart(figure, use_container_width=True)
+
+
+def get_sales_insight(business_insights):
+    sales_terms = ("sales", "revenue", "commercial", "customer")
+    for insight in business_insights:
+        text = " ".join(
+            str(insight.get(key, ""))
+            for key in ("title", "finding", "recommendation")
+        ).lower()
+        if any(term in text for term in sales_terms):
+            return insight
+    return None
+
+
+def render_sales_ai_entry(profile, dataset_name):
+    with st.expander("Ask InsightFlow", expanded=False):
+        st.caption("Ask a sales question grounded in the available Business Knowledge.")
+        question = st.text_input(
+            "What would you like to know?",
+            placeholder="Which products generate the most sales?",
+            key="sales_ai_question"
+        )
+        submitted = st.button("Ask InsightFlow", key="sales_ai_submit", type="primary")
+
+        dataset_key = f"{dataset_name}:sales"
+        if st.session_state.get("sales_ai_dataset_key") != dataset_key:
+            st.session_state.sales_ai_dataset_key = dataset_key
+            st.session_state.sales_ai_conversation_manager = ConversationManager()
+
+        if submitted and question.strip():
+            questions_used = st.session_state.get("ai_questions_used", 0)
+            if can_consume_usage("ai_questions_per_session", questions_used):
+                answer_question(
+                    question.strip(),
+                    profile,
+                    conversation_manager=st.session_state.sales_ai_conversation_manager
+                )
+                st.session_state.ai_questions_used = questions_used + 1
+            else:
+                st.info("The Free plan AI question limit has been reached.")
+
+        render_ai_conversation(st.session_state.sales_ai_conversation_manager)
+
+
+def render_sales_page(df, profile, dataset_name):
+    st.header("Sales")
+    st.caption("Understand how your revenue and sales performance are evolving.")
+
+    kpis = get_sales_kpis(profile)
+    kpi_columns = st.columns(3)
+    for column, kpi in zip(kpi_columns, kpis):
+        with column:
+            render_kpi_card(
+                kpi["label"],
+                kpi["value"],
+                supporting_text=kpi["supporting_text"]
+            )
+
+    analysis_catalog = get_analysis_catalog()
+    sales_analyses = get_sales_analyses(
+        profile.get("available_analyses", []),
+        analysis_catalog
+    )
+
+    st.subheader("Sales analyses")
+    rendered_count = 0
+    for index in range(0, len(sales_analyses), 2):
+        columns = st.columns(2)
+        for column, analysis in zip(columns, sales_analyses[index:index + 2]):
+            with column:
+                if render_sales_analysis_card(df, analysis):
+                    rendered_count += 1
+
+    render_analysis_coverage("sales", has_analysis=rendered_count == 4)
+    render_sales_custom_analysis(df, profile)
+    render_sales_ai_entry(profile, dataset_name)
+    render_key_business_insight(get_sales_insight(profile.get("business_insights", [])))
+
+
 render_app_styles()
 
 
@@ -1191,6 +1426,21 @@ if uploaded_file is not None:
     data_types = get_data_types(df)
     statistics = get_statistics(df)
 
+    if active_page != "Overview":
+        if active_page == "Sales":
+            render_sales_page(
+                df,
+                profile,
+                uploaded_file.name
+            )
+        else:
+            render_business_area_page(
+                active_page,
+                profile,
+                profile.get("business_insights", [])
+            )
+        st.stop()
+
     st.subheader("Dataset Profile")
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -1238,14 +1488,6 @@ if uploaded_file is not None:
     )
     recommended_catalog_analysis = recommended_catalog_analysis or {}
     recommended_resolved_analysis = recommended_resolved_analysis or {}
-
-    if active_page != "Overview":
-        render_business_area_page(
-            active_page,
-            profile,
-            business_insights
-        )
-        st.stop()
 
     render_overview(
         profile,
