@@ -35,6 +35,177 @@ st.set_page_config(
 )
 
 
+def render_app_styles():
+    st.markdown(
+        """
+        <style>
+        :root {
+            --if-bg: #0d1117;
+            --if-panel: #151b24;
+            --if-panel-muted: #111821;
+            --if-border: rgba(148, 163, 184, 0.2);
+            --if-text: #f4f7fb;
+            --if-muted: #9aa8ba;
+            --if-blue: #5b9cff;
+            --if-purple: #9b7cff;
+        }
+
+        .stApp {
+            background: var(--if-bg);
+        }
+
+        .block-container {
+            max-width: 1180px;
+            padding-top: 2.25rem;
+            padding-bottom: 4rem;
+        }
+
+        [data-testid="stHeader"] {
+            background: transparent;
+        }
+
+        [data-testid="stFileUploader"] {
+            background: var(--if-panel);
+            border: 1px solid var(--if-border);
+            border-radius: 8px;
+            padding: 0.65rem;
+        }
+
+        [data-testid="stFileUploader"] section {
+            border: 1px dashed rgba(91, 156, 255, 0.58);
+            border-radius: 6px;
+            background: var(--if-panel-muted);
+        }
+
+        div[data-testid="stMetric"] {
+            background: var(--if-panel);
+            border: 1px solid var(--if-border);
+            border-radius: 8px;
+            padding: 0.85rem 1rem;
+        }
+
+        .if-hero {
+            border-bottom: 1px solid var(--if-border);
+            padding: 1.1rem 0 1.65rem;
+            margin-bottom: 1.35rem;
+        }
+
+        .if-eyebrow {
+            color: var(--if-blue);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            margin-bottom: 0.65rem;
+        }
+
+        .if-hero h1 {
+            color: var(--if-text);
+            font-size: clamp(2.15rem, 5vw, 3.6rem);
+            line-height: 1.05;
+            margin: 0;
+        }
+
+        .if-hero p {
+            color: var(--if-muted);
+            font-size: 1.08rem;
+            margin: 0.8rem 0 0;
+            max-width: 600px;
+        }
+
+        .if-upload-label {
+            color: var(--if-text);
+            font-size: 1rem;
+            font-weight: 650;
+            margin: 0 0 0.35rem;
+        }
+
+        .if-upload-note {
+            color: var(--if-muted);
+            font-size: 0.88rem;
+            margin: 0.7rem 0 0;
+        }
+
+        .if-scope {
+            border-left: 3px solid var(--if-purple);
+            color: var(--if-muted);
+            font-size: 0.9rem;
+            margin-top: 1.15rem;
+            padding: 0.1rem 0 0.1rem 0.8rem;
+        }
+
+        .if-scope strong {
+            color: var(--if-text);
+            font-weight: 650;
+        }
+
+        .if-dataset-header {
+            align-items: baseline;
+            border-bottom: 1px solid var(--if-border);
+            display: flex;
+            gap: 0.7rem;
+            justify-content: space-between;
+            margin: 0.25rem 0 1.4rem;
+            padding-bottom: 0.9rem;
+        }
+
+        .if-dataset-name {
+            color: var(--if-text);
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .if-dataset-meta {
+            color: var(--if-muted);
+            font-size: 0.84rem;
+        }
+
+        @media (max-width: 640px) {
+            .block-container {
+                padding-top: 1.25rem;
+            }
+
+            .if-dataset-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.2rem;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_landing_header(container=None):
+    target = container or st
+    target.markdown(
+        """
+        <section class="if-hero">
+            <div class="if-eyebrow">Business intelligence for better decisions</div>
+            <h1>From Data to Decisions</h1>
+            <p>Turn your business data into a clear view of what is happening and what deserves attention.</p>
+        </section>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_dataset_header(uploaded_file):
+    st.markdown(
+        (
+            '<div class="if-dataset-header">'
+            f'<span class="if-dataset-name">{html.escape(uploaded_file.name)}</span>'
+            f'<span class="if-dataset-meta">{get_plan_display_name()} plan - ready for analysis</span>'
+            '</div>'
+        ),
+        unsafe_allow_html=True
+    )
+
+
+render_app_styles()
+
+
 def render_badges(values, empty_text="None identified."):
     if not values:
         st.caption(empty_text)
@@ -348,6 +519,120 @@ def render_business_health_cards(business_health):
                     ),
                     accent=accent
                 )
+
+
+def format_overview_value(value):
+    if value is None:
+        return "Not available"
+
+    if isinstance(value, float):
+        return f"{value:,.2f}"
+
+    if isinstance(value, int):
+        return f"{value:,}"
+
+    return str(value)
+
+
+def get_overview_kpis(profile):
+    business_metrics = profile.get("business_metrics", {})
+    kpis = []
+
+    metric_sources = [
+        ("sales", "Sales", "total"),
+        ("profitability", "Profit", "total")
+    ]
+
+    for area, label, value_key in metric_sources:
+        metric_group = business_metrics.get(area, {})
+        metrics_by_column = metric_group.get("metrics_by_column", {})
+
+        for column, values in metrics_by_column.items():
+            value = values.get(value_key)
+            if value is not None:
+                kpis.append({
+                    "label": label,
+                    "value": format_overview_value(value),
+                    "context": str(column)
+                })
+                break
+
+    customer_metrics = business_metrics.get("customers", {})
+    for column, value in customer_metrics.get("unique_counts", {}).items():
+        kpis.append({
+            "label": "Customers",
+            "value": format_overview_value(value),
+            "context": str(column)
+        })
+        break
+
+    if len(kpis) < 4:
+        kpis.append({
+            "label": "Records",
+            "value": format_overview_value(profile.get("rows", 0)),
+            "context": "Dataset"
+        })
+
+    return kpis[:4]
+
+
+def render_overview(profile, business_health, business_insights, executive_priorities):
+    st.subheader("Overview")
+    st.caption("A concise view of what is happening and where to focus next.")
+
+    kpis = get_overview_kpis(profile)
+    kpi_columns = st.columns(4)
+
+    for column, kpi in zip(kpi_columns, kpis):
+        with column:
+            st.metric(kpi["label"], kpi["value"], help=kpi["context"])
+
+    overview_columns = st.columns(2)
+
+    with overview_columns[0]:
+        st.markdown("**What needs attention**")
+        attention_items = [
+            health
+            for health in business_health.values()
+            if health.get("status") == "attention"
+        ]
+
+        if attention_items:
+            for health in attention_items[:2]:
+                render_card(
+                    health.get("label", "Business area"),
+                    html.escape(summarize_one_line(health.get("reason"))),
+                    accent="#dc2626"
+                )
+        elif executive_priorities:
+            priority = executive_priorities[0]
+            render_card(
+                priority.get("title", "Priority"),
+                html.escape(summarize_one_line(priority.get("reason"))),
+                accent="#f59e0b"
+            )
+        else:
+            st.caption("No immediate attention area was identified.")
+
+    with overview_columns[1]:
+        st.markdown("**Key business insight**")
+        if business_insights:
+            insight = business_insights[0]
+            insight_text = insight.get("finding") or insight.get("title")
+            render_card(
+                insight.get("title", "Business insight"),
+                html.escape(summarize_one_line(insight_text)),
+                accent="#5b9cff"
+            )
+        elif executive_priorities:
+            priority = executive_priorities[0]
+            render_card(
+                priority.get("title", "Recommended focus"),
+                html.escape(summarize_one_line(priority.get("reason"))),
+                accent="#5b9cff"
+            )
+        else:
+            st.caption("More business context will appear as the dataset supports it.")
 
 
 def render_executive_priority_card(priority, analyses_by_id):
@@ -710,15 +995,22 @@ def render_see_pro(key, title, description):
         st.button("Coming Soon", key=f"{key}_coming_soon", disabled=True)
 
 
-st.title("InsightFlow")
-st.caption(
-    f"Business Intelligence for Better Decisions - {get_plan_display_name()} plan"
-)
-
+landing_placeholder = st.empty()
 uploaded_file = st.file_uploader(
     "Upload a CSV or Excel file",
     type=["csv", "xlsx"]
 )
+
+if uploaded_file is None:
+    render_landing_header(landing_placeholder)
+    landing_placeholder.markdown('<div class="if-upload-label">Start with your business data</div>', unsafe_allow_html=True)
+    landing_placeholder.caption("CSV or XLSX files - no login required to try InsightFlow")
+    landing_placeholder.markdown(
+        '<div class="if-scope"><strong>Currently optimized for</strong><br>'
+        'Sales - Retail - E-commerce - Products - Customers<br>'
+        'Other business datasets can still be explored, but available analysis may be limited.</div>',
+        unsafe_allow_html=True
+    )
 
 if uploaded_file is not None:
     dataset_key = f"{uploaded_file.name}:{uploaded_file.size}"
@@ -744,6 +1036,7 @@ if uploaded_file is not None:
         st.stop()
 
     st.success("File loaded successfully.")
+    render_dataset_header(uploaded_file)
 
     profile = build_profile(df)
     meaningful_numeric = profile["meaningful_numeric_columns"]
@@ -798,6 +1091,13 @@ if uploaded_file is not None:
     )
     recommended_catalog_analysis = recommended_catalog_analysis or {}
     recommended_resolved_analysis = recommended_resolved_analysis or {}
+
+    render_overview(
+        profile,
+        business_health,
+        business_insights,
+        executive_priorities
+    )
 
     st.subheader("Executive Summary")
     summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
